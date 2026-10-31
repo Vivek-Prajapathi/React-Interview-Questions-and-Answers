@@ -17,113 +17,113 @@
 7. [How do you install React Router?](#q7-how-do-you-install-react-router)
 8. [What is BrowserRouter?](#q8-what-is-browserrouter)
 9. [What are Routes and Route?](#q9-what-are-routes-and-route)
-10. [What is the difference between a URL and a route?](#q10-url-vs-route)
+10. [What is the difference between a URL and a route?](#q10-what-is-the-difference-between-a-url-and-a-route)
 
 ## Section 2: Navigation Components
 
 11. [What is Link?](#q11-what-is-link)
 12. [What is NavLink?](#q12-what-is-navlink)
-13. [Difference between Link and NavLink](#q13-difference-between-link-and-navlink)
+13. [Difference between Link and NavLink](#q13-what-is-the-difference-between-link-and-navlink)
 14. [What is useNavigate?](#q14-what-is-usenavigate)
-15. [Difference between Link and useNavigate](#q15-link-vs-usenavigate)
+15. [Difference between Link and useNavigate](#q15-what-is-the-difference-between-link-and-usenavigate)
 16. [What is the replace option in navigation?](#q16-what-is-the-replace-option-in-navigation)
 17. [How do you navigate programmatically?](#q17-how-do-you-navigate-programmatically)
-18. [How do you navigate backward and forward?](#q18-how-to-navigate-backward-and-forward)
+18. [How do you navigate backward and forward?](#q18-how-do-you-navigate-backward-and-forward)
 
 ## Section 3: Route Parameters and URL Handling
 
 19. [What are dynamic routes?](#q19-what-are-dynamic-routes)
 20. [What is useParams?](#q20-what-is-useparams)
-21. [What is the difference between static and dynamic routes?](#q21-static-vs-dynamic-routes)
+21. [What is the difference between static and dynamic routes?](#q21-what-is-the-difference-between-static-and-dynamic-routes)
 22. [What are URL search parameters?](#q22-what-are-url-search-parameters)
 23. [What is useSearchParams?](#q23-what-is-usesearchparams)
-24. [Difference between useParams and useSearchParams](#q24-useparams-vs-usesearchparams)
-25. [How do you pass data between routes?](#q25-how-to-pass-data-between-routes)
+24. [Difference between useParams and useSearchParams](#q24-what-is-the-difference-between-useparams-and-usesearchparams)
+25. [How do you pass data between routes?](#q25-how-do-you-pass-data-between-routes)
 26. [What is useLocation?](#q26-what-is-uselocation)
 27. [What is location state?](#q27-what-is-location-state)
-28. [What is useLocation().pathname?](#q28-what-is-locationpathname)
+28. [What is useLocation().pathname?](#q28-what-is-uselocationpathname)
 
 ## Section 4: Nested Routing and Layouts
 
 29. [What is nested routing?](#q29-what-is-nested-routing)
 30. [What is Outlet?](#q30-what-is-outlet)
 31. [Why do we use Outlet?](#q31-why-do-we-use-outlet)
-32. [What is the difference between nested routes and normal routes?](#q32-nested-routes-vs-normal-routes)
+32. [What is the difference between nested routes and normal routes?](#q32-what-is-the-difference-between-nested-routes-and-normal-routes)
 33. [What is an index route?](#q33-what-is-an-index-route)
 34. [What is a layout route?](#q34-what-is-a-layout-route)
-35. [How do you create multiple layouts in React?](#q35-how-to-create-multiple-layouts)
-36. [What are absolute and relative paths?](#q36-absolute-vs-relative-paths)
+35. [How do you create multiple layouts in React?](#q35-how-do-you-create-multiple-layouts-in-react)
+36. [What are absolute and relative paths?](#q36-what-is-the-difference-between-absolute-and-relative-paths)
 
 ## Section 5: Protected Routes and Authentication
 
 37. [What are protected routes?](#q37-what-are-protected-routes)
 38. [Why do we need protected routes?](#q38-why-do-we-need-protected-routes)
-39. [How do you implement protected routes?](#q39-how-to-implement-protected-routes)
-40. [How do you redirect unauthenticated users to the login page?](#q40-redirect-unauthenticated-users)
+39. [How do you implement protected routes?](#q39-how-do-you-implement-protected-routes)
+40. [How do you redirect unauthenticated users to the login page?](#q40-how-do-you-redirect-unauthenticated-users-to-the-login-page)
 41. [What is Navigate?](#q41-what-is-navigate)
-42. [Difference between Navigate and useNavigate](#q42-navigate-vs-usenavigate)
-43. [How do you implement role-based routing?](#q43-how-to-implement-role-based-routing)
-44. [How do you prevent users from accessing admin routes?](#q44-prevent-access-to-admin-routes)
-45. [How do you handle logout and redirect?](#q45-how-to-handle-logout-and-redirect)
-46. [What is the difference between authentication and authorization in routing?](#q46-authentication-vs-authorization)
-47. [Are protected routes enough to secure an application?](#q47-are-protected-routes-enough)
+42. [Difference between Navigate and useNavigate](#q42-what-is-the-difference-between-navigate-and-usenavigate)
+43. [How do you implement role-based routing?](#q43-how-do-you-implement-role-based-routing)
+44. [How do you prevent users from accessing admin routes?](#q44-how-do-you-prevent-users-from-accessing-admin-routes)
+45. [How do you handle logout and redirect?](#q45-how-do-you-handle-logout-and-redirect)
+46. [What is the difference between authentication and authorization in routing?](#q46-what-is-the-difference-between-authentication-and-authorization-in-routing)
+47. [Are protected routes enough to secure an application?](#q47-are-protected-routes-enough-to-secure-an-application)
 
 ## Section 6: Advanced React Router Concepts
 
 48. [What is createBrowserRouter?](#q48-what-is-createbrowserrouter)
 49. [What is createRoutesFromElements?](#q49-what-is-createroutesfromelements)
-50. [Difference between BrowserRouter and createBrowserRouter](#q50-browserrouter-vs-createbrowserrouter)
+50. [Difference between BrowserRouter and createBrowserRouter](#q50-what-is-the-difference-between-browserrouter-and-createbrowserrouter)
 51. [What are route objects?](#q51-what-are-route-objects)
 52. [What are loaders?](#q52-what-are-loaders)
 53. [What is useLoaderData?](#q53-what-is-useloaderdata)
 54. [What are actions in React Router?](#q54-what-are-actions-in-react-router)
-55. [What is Form in React Router?](#q55-what-is-form)
+55. [What is Form in React Router?](#q55-what-is-form-in-react-router)
 56. [What is useActionData?](#q56-what-is-useactiondata)
 57. [What is useNavigation?](#q57-what-is-usenavigation)
 58. [What is useSubmit?](#q58-what-is-usesubmit)
 59. [What is useFetcher?](#q59-what-is-usefetcher)
 60. [What is errorElement?](#q60-what-is-errorelement)
 61. [What is useRouteError?](#q61-what-is-userouteerror)
-62. [What is lazy loading in routing?](#q62-lazy-loading-in-routing)
-63. [What is route-based code splitting?](#q63-route-based-code-splitting)
-64. [What is revalidation in React Router?](#q64-revalidation-in-react-router)
+62. [What is lazy loading in routing?](#q62-what-is-lazy-loading-in-routing)
+63. [What is route-based code splitting?](#q63-what-is-route-based-code-splitting)
+64. [What is revalidation in React Router?](#q64-what-is-revalidation-in-react-router)
 65. [What is useRevalidator?](#q65-what-is-userevalidator)
 
 ## Section 7: Advanced Navigation and Routing
 
 66. [What is a wildcard route?](#q66-what-is-a-wildcard-route)
-67. [How do you implement a 404 Not Found page?](#q67-how-to-implement-a-404-page)
-68. [What is basename in React Router?](#q68-what-is-basename)
+67. [How do you implement a 404 Not Found page?](#q67-how-do-you-implement-a-404-not-found-page)
+68. [What is basename in React Router?](#q68-what-is-basename-in-react-router)
 69. [What is HashRouter?](#q69-what-is-hashrouter)
-70. [Difference between BrowserRouter and HashRouter](#q70-browserrouter-vs-hashrouter)
+70. [Difference between BrowserRouter and HashRouter](#q70-what-is-the-difference-between-browserrouter-and-hashrouter)
 71. [What is MemoryRouter?](#q71-what-is-memoryrouter)
 72. [What is ScrollRestoration?](#q72-what-is-scrollrestoration)
 73. [What is useBlocker?](#q73-what-is-useblocker)
 74. [What is useNavigationType?](#q74-what-is-usenavigationtype)
-75. [How do you handle query strings and filters?](#q75-how-to-handle-query-strings-and-filters)
+75. [How do you handle query strings and filters?](#q75-how-do-you-handle-query-strings-and-filters)
 
 ## Section 8: React Router v6 vs v7
 
-76. [What are the major differences between React Router v6 and v7?](#q76-react-router-v6-vs-v7)
-77. [What happened to Switch in React Router v6?](#q77-what-happened-to-switch)
-78. [Why is exact no longer required in React Router v6?](#q78-why-is-exact-no-longer-required)
-79. [What is the difference between element and Component in route configuration?](#q79-element-vs-component-in-route-configuration)
-80. [What is the difference between declarative, data and framework routing?](#q80-declarative-vs-data-vs-framework-routing)
-81. [Can React Router be used without BrowserRouter?](#q81-can-react-router-work-without-browserrouter)
+76. [What are the major differences between React Router v6 and v7?](#q76-what-are-the-major-differences-between-react-router-v6-and-v7)
+77. [What happened to Switch in React Router v6?](#q77-what-happened-to-switch-in-react-router-v6)
+78. [Why is exact no longer required in React Router v6?](#q78-why-is-exact-no-longer-required-in-react-router-v6)
+79. [What is the difference between element and Component in route configuration?](#q79-what-is-the-difference-between-element-and-component-in-route-configuration)
+80. [What is the difference between declarative, data and framework routing?](#q80-what-is-the-difference-between-declarative-data-and-framework-routing)
+81. [Can React Router be used without BrowserRouter?](#q81-can-react-router-be-used-without-browserrouter)
 
 ## Section 9: Practical and Scenario-Based Interview Questions
 
-82. [How would you create a navbar that highlights the active page?](#q82-active-navbar)
-83. [How would you redirect users after successful login?](#q83-redirect-after-login)
-84. [How would you redirect users to the page they originally wanted to visit?](#q84-redirect-to-original-page)
-85. [How would you implement an admin dashboard with nested pages?](#q85-admin-dashboard-with-nested-pages)
-86. [How would you prevent a logged-in user from opening the login page?](#q86-prevent-authenticated-users-from-login-page)
-87. [How would you implement pagination using URL parameters?](#q87-pagination-using-url-parameters)
-88. [How would you handle invalid route parameters?](#q88-invalid-route-parameters)
-89. [How would you implement breadcrumbs?](#q89-breadcrumbs)
-90. [How would you troubleshoot a blank page after refreshing a route?](#q90-blank-page-after-refresh)
-91. [How would you troubleshoot navigation not working?](#q91-navigation-not-working)
-92. [What are the common mistakes developers make while implementing routing?](#q92-common-routing-mistakes)
+82. [How would you create a navbar that highlights the active page?](#q82-how-would-you-create-a-navbar-that-highlights-the-active-page)
+83. [How would you redirect users after successful login?](#q83-how-would-you-redirect-users-after-successful-login)
+84. [How would you redirect users to the page they originally wanted to visit?](#q84-how-would-you-redirect-users-to-the-page-they-originally-wanted-to-visit)
+85. [How would you implement an admin dashboard with nested pages?](#q85-how-would-you-implement-an-admin-dashboard-with-nested-pages)
+86. [How would you prevent a logged-in user from opening the login page?](#q86-how-would-you-prevent-an-authenticated-user-from-opening-the-login-page)
+87. [How would you implement pagination using URL parameters?](#q87-how-would-you-implement-pagination-using-url-parameters)
+88. [How would you handle invalid route parameters?](#q88-how-would-you-handle-invalid-route-parameters)
+89. [How would you implement breadcrumbs?](#q89-how-would-you-implement-breadcrumbs)
+90. [How would you troubleshoot a blank page after refreshing a route?](#q90-how-would-you-troubleshoot-a-blank-page-after-refreshing-a-route)
+91. [How would you troubleshoot navigation not working?](#q91-how-would-you-troubleshoot-navigation-not-working)
+92. [What are the common mistakes developers make while implementing routing?](#q92-what-are-the-common-mistakes-developers-make-while-implementing-routing)
 
 ---
 
@@ -3805,389 +3805,294 @@ Use this checklist to evaluate your preparation.
 - [ ] Declarative vs Data vs Framework mode
 
 ---
-Learning Flow
 
-1. React Router Fundamentals
-
-What is React Router?
-
-Why do we need React Router?
-
-What is client-side routing?
-
-SPA vs MPA
-
-How React Router works
-
-React Router v6 vs v7 overview
-
-2. Installation and Router Setup
-
-Installing React Router
-
-Understanding react-router-dom
-
-What is BrowserRouter?
-
-What is RouterProvider?
-
-BrowserRouter vs RouterProvider
-
-Setting up the router in main.jsx
-
-Understanding the basic routing flow
-
-3. Basic Routing
-
-What is a route?
-
-What is Routes?
-
-What is Route?
-
-Defining multiple routes
-
-path and element props
-
-Default route
-
-Index route
-
-Wildcard route (*)
-
-Creating a 404 page
-
-4. Navigation Components
-
-What is navigation?
-
-What is Link?
-
-Link vs anchor tag
-
-What is NavLink?
-
-NavLink vs Link
-
-Active link styling
-
-isActive, isPending and end
-
-Creating a Navbar
-
-Creating a Sidebar
-
-5. React Router Hooks – Basic
-
-What are React Router hooks?
-
-useNavigate()
-
-useLocation()
-
-useParams()
-
-useSearchParams()
-
-useMatch()
-
-useNavigationType()
-
-6. Dynamic Routing and URL Parameters
-
-What is dynamic routing?
-
-Dynamic route segments
-
-URL parameters
-
-Accessing parameters using useParams()
-
-Multiple dynamic parameters
-
-Optional segments (version-dependent)
-
-Splat and wildcard parameters
-
-Practical product details page
-
-7. Nested Routing
-
-What is nested routing?
-
-Parent and child routes
-
-Outlet
-
-Index routes
-
-Pathless routes
-
-Nested layouts
-
-useOutlet()
-
-useOutletContext()
-
-8. Layout Routing
-
-What is layout routing?
-
-Shared layouts
-
-Layout components
-
-Public layout
-
-Dashboard layout
-
-Admin layout
-
-Navbar and Sidebar with Outlet
-
-9. Programmatic Navigation
-
-What is programmatic navigation?
-
-useNavigate()
-
-Navigating on button clicks
-
-Conditional navigation
-
-navigate(-1) and navigate(1)
-
-replace vs normal navigation
-
-Navigate component
-
-Redirecting after login/logout
-
-10. Passing Data Between Routes
-
-Passing state through Link
-
-Passing state through useNavigate()
-
-Receiving state through useLocation()
-
-URL parameters vs route state
-
-When to use each approach
-
-11. Query Parameters
-
-What are query parameters?
-
-Query strings and URLSearchParams
-
-Reading query parameters
-
-Updating query parameters
-
-useSearchParams()
-
-Search functionality
-
-Filtering and sorting
-
-Pagination
-
-12. Authentication and Protected Routes
-
-Authentication vs authorization
-
-What are protected routes?
-
-Creating a ProtectedRoute component
-
-Public and private routes
-
-Login and logout flow
-
-Role-based routing
-
-Admin-only routes
-
-Token expiration
-
-Preserving the intended destination after login
-
-13. Data Routers and Data APIs
-
-What are data routers?
-
-createBrowserRouter()
-
-RouterProvider
-
-Route objects
-
-Loaders
-
-useLoaderData()
-
-Actions
-
-useActionData()
-
-Form
-
-useSubmit()
-
-useFetcher()
-
-Data revalidation
-
-14. Loading and Error Handling
-
-Loading states
-
-useNavigation()
-
-Route error boundaries
-
-errorElement
-
-useRouteError()
-
-isRouteErrorResponse()
-
-Handling API errors
-
-Handling 404 errors
-
-15. Advanced Navigation
-
-Browser History API
-
-pushState() and replaceState()
-
-Navigation blocking
-
-useBlocker()
-
-useBeforeUnload()
-
-Unsaved form changes
-
-Scroll restoration
-
-Back and forward navigation
-
-16. Lazy Loading and Performance
-
-What is lazy loading?
-
-React.lazy()
-
-Suspense
-
-Route-based code splitting
-
-Lazy route modules
-
-Performance optimization
-
-Prefetching concepts
-
-17. Router Types and Deployment
-
-BrowserRouter
-
-HashRouter
-
-MemoryRouter
-
-StaticRouter
-
-basename
-
-BrowserRouter vs HashRouter
-
-Deployment on Vercel and Netlify
-
-Handling page refresh and 404 errors
-
-18. Testing React Router
-
-Testing with MemoryRouter
-
-createMemoryRouter()
-
-Testing navigation
-
-Testing dynamic routes
-
-Testing protected routes
-
-React Testing Library integration
-
-19. Version Differences and Migration
-
-React Router v5 vs v6
-
-React Router v6 vs v7
-
-Switch vs Routes
-
-useHistory vs useNavigate
-
-Redirect vs Navigate
-
-component vs element
-
-Common migration mistakes
-
-20. Practical Implementation
-
-Build these projects in sequence:
-
-Basic multi-page navigation application.
-
-E-commerce application with dynamic product routes.
-
-Dashboard with nested routes and layouts.
-
-Authentication application with protected routes.
-
-Admin dashboard with role-based access.
-
-Advanced application using loaders, actions and error boundaries.
-
-Study Method
-
-For every topic, follow this learning cycle:
-
-Understand the concept.
-
-Learn the syntax and working.
-
-Study practical examples.
-
-Implement it yourself.
-
-Revise important points.
-
-Attempt interview questions.
-
-Interview Preparation
-
-After completing all the concepts, move to a separate interview preparation section:
-
-Basic React Router Questions
-
-Intermediate React Router Questions
-
-Advanced React Router Questions
-
-Tricky and Scenario-Based Questions
-
-Practical Coding Questions
-
-React Router v5, v6 and v7 Comparison Questions
-
-Important: Learn BrowserRouter and RouterProvider as separate router setup approaches. You do not need to use both together in every application.
+# React Router – Complete Learning Flow
+
+Follow this order while learning React Router. Complete the concepts and coding practice first. Attempt the interview questions only after finishing the learning flow.
+
+## Phase 1: Understand and Set Up React Router
+
+### 1. React Router Fundamentals
+- What is routing?
+- What is React Router?
+- Why do we need routing in React?
+- What is a Single Page Application (SPA)?
+- SPA vs MPA
+- Traditional routing vs client-side routing
+- How client-side routing works
+- What happens when the URL changes?
+
+### 2. Installation and Project Setup
+- Install React Router
+- Understand the `react-router` and `react-router-dom` package names for the version being used
+- Set up a basic React application
+- Understand where routing is configured (`main.jsx` or `App.jsx`)
+- Importing the required router components
+
+### 3. Router Components and Router Setup
+- What is a router?
+- What is `BrowserRouter`?
+- Wrap the application with `BrowserRouter`
+- What is `RouterProvider`?
+- What is `createBrowserRouter()`?
+- `BrowserRouter` vs `RouterProvider` (two different setup approaches)
+- Understand the basic router component hierarchy
+
+### 4. Creating Basic Routes
+- What is a route?
+- What is `Routes`?
+- What is `Route`?
+- `path` and `element` props
+- Create Home, About and Contact routes
+- Route matching basics
+- Default/home route
+- Index route (introductory understanding)
+- Wildcard route (`*`)
+- Create a 404 Not Found page
+
+## Phase 2: Navigate Between Pages
+
+### 5. Link and NavLink
+- What is client-side navigation?
+- What is the `Link` component?
+- `Link` vs HTML anchor (`<a>`) tag
+- `to` prop
+- Absolute vs relative navigation paths
+- What is the `NavLink` component?
+- `NavLink` vs `Link`
+- Active link styling
+- `isActive`, `isPending` and `end`
+
+### 6. Build Navigation UI
+- Create a Navbar using `Link` and `NavLink`
+- Highlight the active page
+- Create a Sidebar
+- Navigate between pages without a full-page reload
+- Organize navigation links in reusable components
+
+### 7. Programmatic Navigation with `useNavigate`
+- What is programmatic navigation?
+- What is `useNavigate()`?
+- Navigate after a button click
+- Navigate after form submission
+- Conditional navigation
+- Navigate backward and forward (`navigate(-1)`, `navigate(1)`)
+- `replace` vs normal navigation
+- What is the `Navigate` component?
+- `Navigate` vs `useNavigate()`
+
+## Phase 3: Understand URL Data and Router Hooks
+
+### 8. Dynamic Routing and Route Parameters
+- What is dynamic routing?
+- Static routes vs dynamic routes
+- Dynamic route segments (for example, `/products/:productId`)
+- What are route parameters?
+- What is `useParams()`?
+- Read parameters inside a component
+- Multiple route parameters
+- Splat/wildcard route parameters
+- Optional segments (check support in the installed version)
+- Build a product listing and product details page
+
+### 9. Location and Navigation Hooks
+- What are React Router hooks?
+- What is `useLocation()`?
+- Understand `pathname`, `search`, `hash`, `state` and `key`
+- What is `useNavigationType()`?
+- What is `useMatch()`?
+- When and why to use each hook
+
+### 10. Passing Data Between Routes
+- Pass state using `Link`
+- Pass state using `useNavigate()`
+- Read route state using `useLocation()`
+- URL parameters vs location state
+- When to use URL data and when to use navigation state
+
+### 11. Query Parameters and Search Params
+- What is a query string?
+- Path parameters vs query parameters
+- Understand `URLSearchParams`
+- What is `useSearchParams()`?
+- Read query parameters
+- Update and delete query parameters
+- Keep search/filter state in the URL
+- Implement search, filtering, sorting and pagination
+
+## Phase 4: Structure Routes and Build Layouts
+
+### 12. Nested Routing
+- What is nested routing?
+- Parent routes and child routes
+- What is `Outlet`?
+- Render child routes using `Outlet`
+- Index routes
+- Pathless layout routes
+- Relative child paths
+- `useOutlet()` and `useOutletContext()`
+
+### 13. Layout Routing
+- What is a layout component?
+- Shared layouts
+- Layout routes with `Outlet`
+- Public layout
+- Dashboard layout
+- Admin layout
+- Nested Navbar and Sidebar layouts
+- Build a dashboard with multiple child pages
+
+## Phase 5: Authentication and Route Protection
+
+### 14. Authentication and Protected Routes
+- Authentication vs authorization
+- Public routes vs private routes
+- What is a protected route?
+- Create a `ProtectedRoute` component
+- Redirect unauthenticated users using `Navigate`
+- Preserve the page the user originally wanted to visit
+- Redirect after successful login
+- Prevent authenticated users from opening login/register pages
+- Logout and redirect flow
+- Role-based routing
+- Admin-only routes
+- Handle expired sessions/tokens
+- Why frontend route protection is not a replacement for backend authorization
+
+## Phase 6: Data Routers and Advanced Features
+
+### 15. Data Router Setup
+- What is data router routing?
+- `createBrowserRouter()`
+- `RouterProvider`
+- Route objects
+- `createRoutesFromElements()`
+- Declarative routing vs data routing
+
+### 16. Loaders and Loading States
+- What is a loader?
+- Define a loader on a route
+- Load data before rendering a route
+- What is `useLoaderData()`?
+- Handle loader errors
+- What is `useNavigation()`?
+- Show pending/loading UI during navigation
+
+### 17. Actions and Form Submissions
+- What are route actions?
+- What is React Router's `Form` component?
+- Submit form data to an action
+- What is `useActionData()`?
+- What is `useSubmit()`?
+- What is `useFetcher()`?
+- `Form` vs `useFetcher()`
+- Data revalidation after mutations
+- What is `useRevalidator()`?
+
+### 18. Route Error Handling
+- What is `errorElement` / route error boundary?
+- What is `useRouteError()`?
+- What is `isRouteErrorResponse()`?
+- Handle loader and action errors
+- Handle route-not-found errors
+- Build a route-level error page
+
+### 19. Lazy Loading and Performance
+- What is lazy loading?
+- `React.lazy()` and `Suspense`
+- Route-based code splitting
+- Lazy route modules
+- Reduce the initial JavaScript bundle
+- Prefetching concepts (where supported)
+
+## Phase 7: Advanced Navigation, Deployment and Testing
+
+### 20. Browser History and Advanced Navigation
+- Understand the browser history stack
+- `pushState()` and `replaceState()` concepts
+- Push vs replace navigation
+- Back and forward navigation
+- What is `useBlocker()`?
+- What is `useBeforeUnload()`?
+- Prevent accidental navigation away from unsaved forms
+- What is `ScrollRestoration`?
+
+### 21. Router Types and Configuration
+- `BrowserRouter`
+- `HashRouter`
+- `MemoryRouter`
+- `StaticRouter` (server-rendering context)
+- `basename`
+- `BrowserRouter` vs `HashRouter`
+- When to use each router type
+
+### 22. Deployment and Production Issues
+- Deploy an SPA using BrowserRouter
+- Configure server-side fallback/rewrites
+- Handle refresh on nested URLs
+- Fix 404 errors after refreshing a route
+- Deployment considerations for Vercel and Netlify
+- Common production routing problems
+
+### 23. Testing React Router
+- Why router testing is needed
+- Test with `MemoryRouter`
+- Test with `createMemoryRouter()`
+- Test navigation and active links
+- Test dynamic routes and URL parameters
+- Test protected routes
+- React Testing Library integration
+
+### 24. React Router Version Differences
+- React Router v5 vs v6
+- React Router v6 vs v7
+- `Switch` vs `Routes`
+- `useHistory()` vs `useNavigate()`
+- `Redirect` vs `Navigate`
+- `component` / `render` vs `element` / `Component`
+- `BrowserRouter` vs `createBrowserRouter()`
+- Declarative vs Data vs Framework mode
+- Common migration mistakes
+
+## Phase 8: Practical Coding Sequence
+
+Build these projects in order. Do not move to the next project until you can build the current one without copying the entire solution.
+
+1. **Basic Multi-Page App** – `BrowserRouter`, `Routes`, `Route`, `Link` and `NavLink`.
+2. **Navigation Bar** – active links, reusable Navbar and Sidebar.
+3. **Product App** – dynamic product routes, `useParams()` and product details.
+4. **Searchable Product App** – `useSearchParams()`, search, filters and pagination.
+5. **Dashboard App** – nested routes, `Outlet`, index routes and shared layouts.
+6. **Authentication App** – login, logout, protected routes and redirects.
+7. **Role-Based Admin App** – user/admin route access and nested admin pages.
+8. **Data Router App** – loaders, actions, forms, pending UI and error boundaries.
+9. **Production-Ready App** – lazy loading, deployment fallback and route testing.
+
+## How to Study Each Topic
+
+For every topic, follow this sequence:
+
+1. Understand what the concept is and why it is needed.
+2. Learn its syntax, props, hooks and working.
+3. Trace what happens step by step when it runs.
+4. Study a small practical example.
+5. Write the code yourself without copying.
+6. Test edge cases and common mistakes.
+7. Make short revision notes.
+
+## When to Start Interview Questions
+
+Start the interview questions in the Table of Contents only after completing the learning phases and practical projects. Then practise in this order:
+
+1. Basic concept questions.
+2. Syntax and difference-based questions.
+3. Hooks and implementation questions.
+4. Advanced and version-specific questions.
+5. Scenario-based and debugging questions.
+
+**Important:** Learn `BrowserRouter` with the declarative `Routes`/`Route` approach first. Then learn `createBrowserRouter()` with `RouterProvider` as the data-router approach. They are alternative setup patterns; you do not need to wrap one inside the other.
+
+---
 
 **End of Chapter 3 – React Routing**
 
