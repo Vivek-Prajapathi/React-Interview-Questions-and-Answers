@@ -5681,7 +5681,7 @@ Think of `useMemo` as a small cache:
 
 ```text
                  ┌────────────────────┐
-                 │      useMemo        │
+                 │      useMemo       │
                  │                    │
 dependencies ──► │ Should I reuse it? │
                  │                    │
