@@ -3930,3 +3930,882 @@ React DevTools Profiler
 ```
 
 That will complete the **first major optimization technique** properly.
+
+# Part 5 — `React.memo()` Deep Dive 🔥
+
+Now we go one level deeper. I don't want you to memorize **“React.memo prevents re-render.”** That statement is incomplete.
+
+You should understand **exactly when React.memo allows React to skip work and when it cannot.**
+
+---
+
+## 1. First: What is `React.memo()` actually doing?
+
+Suppose we have:
+
+```jsx
+const Child = React.memo(function Child({ name }) {
+  console.log("Child rendered");
+
+  return <h2>Hello {name}</h2>;
+});
+```
+
+And:
+
+```jsx
+function Parent() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <>
+      <button onClick={() => setCount(count + 1)}>
+        {count}
+      </button>
+
+      <Child name="Nikitha" />
+    </>
+  );
+}
+```
+
+When `count` changes:
+
+```text
+setCount()
+   ↓
+Parent updates
+   ↓
+Parent renders again
+   ↓
+React reaches <Child name="Nikitha" />
+   ↓
+React.memo checks Child's previous props vs new props
+   ↓
+name === name
+   ↓
+Props are equal
+   ↓
+BAILOUT
+   ↓
+Child function does not need to execute again
+```
+
+That's the important optimization.
+
+### Without `React.memo`
+
+```text
+Parent update
+     ↓
+Parent renders
+     ↓
+Child renders
+     ↓
+React compares output
+     ↓
+DOM may or may not change
+```
+
+### With `React.memo`
+
+```text
+Parent update
+     ↓
+Parent renders
+     ↓
+React checks Child props
+     ↓
+Props equal?
+     ↓
+YES
+     ↓
+Skip Child rendering work
+```
+
+So think of `React.memo` as a **bailout mechanism**.
+
+---
+
+# 2. What exactly is being memoized?
+
+This is a very important interview question.
+
+People often say:
+
+> "`React.memo` memoizes the component."
+
+That's not precise enough.
+
+Conceptually:
+
+```jsx
+React.memo(Component)
+```
+
+creates a memoized component whose rendering work can be **skipped when its props haven't changed**.
+
+It does **not** mean:
+
+- DOM is permanently stored
+- component never renders again
+- component's state is frozen
+- component's context is frozen
+
+Think:
+
+> **React.memo gives React permission to reuse the previous rendered result when the relevant props are equal.**
+
+---
+
+# 3. How does React know whether props changed?
+
+This is where **shallow comparison** comes in.
+
+Suppose:
+
+```jsx
+<Child
+  name="Nikitha"
+  age={21}
+/>
+```
+
+Previous:
+
+```js
+{
+  name: "Nikitha",
+  age: 21
+}
+```
+
+Next:
+
+```js
+{
+  name: "Nikitha",
+  age: 21
+}
+```
+
+React compares the individual props.
+
+Conceptually:
+
+```text
+previous props       new props
+
+name ── "Nikitha"    name ── "Nikitha"
+          ↓                    ↓
+       equal ✓
+
+age ── 21            age ── 21
+        ↓                    ↓
+      equal ✓
+```
+
+Therefore:
+
+```text
+Props equal
+    ↓
+React.memo bailout
+```
+
+---
+
+# 4. React uses `Object.is`-style comparison
+
+This is a good interview-level detail.
+
+For individual props, React's memo comparison uses `Object.is` semantics.
+
+For normal values:
+
+```js
+Object.is(10, 10)
+// true
+
+Object.is("hello", "hello")
+// true
+
+Object.is(true, true)
+// true
+```
+
+But objects are references:
+
+```js
+Object.is({}, {})
+// false
+```
+
+Because these are two different objects.
+
+Same with arrays:
+
+```js
+Object.is([], [])
+// false
+```
+
+And functions:
+
+```js
+Object.is(
+  () => {},
+  () => {}
+)
+// false
+```
+
+---
+
+# 5. This is why objects cause problems
+
+Look at this:
+
+```jsx
+const Child = React.memo(function Child({ user }) {
+  console.log("Child rendered");
+
+  return <h2>{user.name}</h2>;
+});
+```
+
+Parent:
+
+```jsx
+function Parent() {
+  const [count, setCount] = useState(0);
+
+  const user = {
+    name: "Nikitha"
+  };
+
+  return (
+    <>
+      <button onClick={() => setCount(count + 1)}>
+        {count}
+      </button>
+
+      <Child user={user} />
+    </>
+  );
+}
+```
+
+You might think:
+
+> "`user.name` didn't change, so Child shouldn't render."
+
+But look carefully.
+
+Every time `Parent()` executes:
+
+```js
+const user = {
+  name: "Nikitha"
+};
+```
+
+creates a **new object**.
+
+So:
+
+### First render
+
+```text
+user ───────► Object A
+               {name: "Nikitha"}
+```
+
+### Second render
+
+```text
+user ───────► Object B
+               {name: "Nikitha"}
+```
+
+Even though:
+
+```js
+ObjectA.name === ObjectB.name
+```
+
+the objects themselves are different:
+
+```js
+ObjectA !== ObjectB
+```
+
+Therefore:
+
+```text
+Previous user reference ≠ New user reference
+                     ↓
+React.memo says:
+"Prop changed"
+                     ↓
+Child renders
+```
+
+---
+
+# 6. `useMemo` can solve this particular problem
+
+```jsx
+const user = useMemo(() => {
+  return {
+    name: "Nikitha"
+  };
+}, []);
+```
+
+Now:
+
+```text
+First render:
+
+user ─────► Object A
+
+
+Second render:
+
+user ─────► Object A
+```
+
+Same reference.
+
+Therefore:
+
+```text
+React.memo
+    ↓
+compare user
+    ↓
+same reference
+    ↓
+BAILOUT
+```
+
+This is the relationship you should understand:
+
+```text
+React.memo
+     │
+     │ needs stable props
+     ↓
+Object/function props
+     │
+     ├── useMemo → stable object/array
+     │
+     └── useCallback → stable function
+```
+
+---
+
+# 7. What about functions?
+
+Same problem.
+
+```jsx
+const Child = React.memo(function Child({ onClick }) {
+  console.log("Child rendered");
+
+  return <button onClick={onClick}>Click</button>;
+});
+```
+
+Parent:
+
+```jsx
+function Parent() {
+  const [count, setCount] = useState(0);
+
+  const handleClick = () => {
+    console.log("clicked");
+  };
+
+  return (
+    <>
+      <button onClick={() => setCount(count + 1)}>
+        {count}
+      </button>
+
+      <Child onClick={handleClick} />
+    </>
+  );
+}
+```
+
+Every Parent render creates:
+
+```js
+new function
+```
+
+So:
+
+```text
+Render 1:
+handleClick ──► Function A
+
+Render 2:
+handleClick ──► Function B
+```
+
+Therefore:
+
+```js
+FunctionA !== FunctionB
+```
+
+React.memo sees:
+
+```text
+onClick changed
+```
+
+and Child renders.
+
+---
+
+# 8. `useCallback` stabilizes the function reference
+
+```jsx
+const handleClick = useCallback(() => {
+  console.log("clicked");
+}, []);
+```
+
+Now:
+
+```text
+Render 1:
+handleClick ──► Function A
+
+Render 2:
+handleClick ──► Function A
+
+Render 3:
+handleClick ──► Function A
+```
+
+So:
+
+```text
+React.memo
+    ↓
+onClick reference unchanged
+    ↓
+BAILOUT
+```
+
+---
+
+# 9. Very important: `React.memo` does NOT stop every re-render
+
+This is where many candidates make mistakes.
+
+Consider:
+
+```jsx
+const Child = React.memo(function Child() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <button onClick={() => setCount(count + 1)}>
+      {count}
+    </button>
+  );
+});
+```
+
+Even though:
+
+```jsx
+React.memo(Child)
+```
+
+exists...
+
+When Child's own state changes:
+
+```text
+Child state changes
+      ↓
+Child schedules update
+      ↓
+Child renders
+```
+
+`React.memo` does not prevent that.
+
+---
+
+# 10. Context also bypasses the idea of prop equality
+
+Example:
+
+```jsx
+const ThemeContext = createContext();
+
+const Child = React.memo(function Child() {
+  const theme = useContext(ThemeContext);
+
+  return <div>{theme}</div>;
+});
+```
+
+If context changes:
+
+```text
+Context changes
+      ↓
+Child consumes that context
+      ↓
+Child updates
+```
+
+Even if:
+
+```text
+props didn't change
+```
+
+the component can still render.
+
+So:
+
+> `React.memo` primarily protects against unnecessary parent-driven rendering when props are equal. It does not make the component immune to its own state or consumed context updates.
+
+---
+
+# 11. What about a custom comparison?
+
+You can do:
+
+```jsx
+const Child = React.memo(
+  ChildComponent,
+  arePropsEqual
+);
+```
+
+Example:
+
+```jsx
+const Child = React.memo(
+  function Child({ user }) {
+    return <h2>{user.name}</h2>;
+  },
+
+  function arePropsEqual(oldProps, newProps) {
+    return oldProps.user.name === newProps.user.name;
+  }
+);
+```
+
+Now you are telling React:
+
+> "Use my logic to decide whether these props should be considered equal."
+
+If:
+
+```js
+oldProps.user.name === newProps.user.name
+```
+
+then React can bail out.
+
+---
+
+# 12. But custom comparison is dangerous
+
+Suppose:
+
+```jsx
+function Child({ user, onClick }) {
+  // ...
+}
+```
+
+And your comparison only checks:
+
+```js
+oldProps.user === newProps.user
+```
+
+but completely ignores:
+
+```js
+onClick
+```
+
+That can create bugs.
+
+Why?
+
+Because the new function might contain new state/closure values.
+
+For example:
+
+```jsx
+function Parent() {
+  const [count, setCount] = useState(0);
+
+  const handleClick = () => {
+    console.log(count);
+  };
+
+  return (
+    <Child
+      value={count}
+      onClick={handleClick}
+    />
+  );
+}
+```
+
+If your custom comparison incorrectly says props are equal while `onClick` actually changed, Child could keep using an old function.
+
+This is why custom comparison needs to be handled carefully.
+
+---
+
+# 13. Why not use `React.memo` everywhere?
+
+Excellent question.
+
+Because optimization itself has a cost.
+
+Imagine:
+
+```jsx
+const TinyText = React.memo(({ name }) => {
+  return <span>{name}</span>;
+});
+```
+
+This component is extremely cheap.
+
+React now has to perform:
+
+```text
+Parent renders
+      ↓
+Compare props
+      ↓
+Decide whether to render
+```
+
+If rendering the component is cheaper than performing the comparison, memoization may not provide meaningful benefit.
+
+So the correct philosophy is:
+
+> **Don't optimize because you can. Optimize because there is work worth avoiding.**
+
+---
+
+# 14. Real-world example: Product List
+
+Imagine:
+
+```jsx
+function ProductList({ products, onSelect }) {
+  return (
+    <div>
+      {products.map(product => (
+        <Product
+          key={product.id}
+          product={product}
+          onSelect={onSelect}
+        />
+      ))}
+    </div>
+  );
+}
+```
+
+Suppose there are:
+
+```text
+1,000 products
+```
+
+Parent state changes for something unrelated:
+
+```text
+Cart count changes
+      ↓
+Parent renders
+      ↓
+ProductList renders
+      ↓
+1,000 Product components may be processed
+```
+
+If `Product` is:
+
+```jsx
+const Product = React.memo(function Product({
+  product,
+  onSelect
+}) {
+  return (
+    <div>
+      {product.name}
+    </div>
+  );
+});
+```
+
+and its props remain stable:
+
+```text
+Parent update
+     ↓
+ProductList
+     ↓
+Product 1 → props same → bailout
+Product 2 → props same → bailout
+Product 3 → props same → bailout
+...
+Product 1000 → props same → bailout
+```
+
+That can be a significant optimization.
+
+But if you do:
+
+```jsx
+<Product
+  product={{ ...product }}
+  onSelect={() => onSelect(product.id)}
+/>
+```
+
+you just created:
+
+```text
+new object
+new function
+```
+
+for every Product.
+
+Now `React.memo` loses much of its effectiveness.
+
+---
+
+# 15. The most important mental model
+
+Don't think:
+
+> `React.memo = don't render this component.`
+
+Think:
+
+> **`React.memo = before doing parent-driven rendering work for this component, React can check whether the props are equivalent and potentially bail out.`**
+
+That is a much more accurate mental model.
+
+---
+
+# 16. Complete flow
+
+### Without memo
+
+```text
+Parent state changes
+        ↓
+Parent renders
+        ↓
+Child reached
+        ↓
+Child renders
+        ↓
+React creates new element output
+        ↓
+Reconciliation
+        ↓
+Commit only necessary DOM changes
+```
+
+### With memo + stable props
+
+```text
+Parent state changes
+        ↓
+Parent renders
+        ↓
+Child reached
+        ↓
+React.memo compares props
+        ↓
+Props equal
+        ↓
+BAILOUT
+        ↓
+Skip unnecessary Child rendering work
+```
+
+### With memo + unstable object
+
+```text
+Parent state changes
+        ↓
+Parent renders
+        ↓
+new object created
+        ↓
+React.memo compares references
+        ↓
+Different reference
+        ↓
+Child renders
+```
+
+---
+
+# 17. Interview answer 🎯
+
+If interviewer asks:
+
+### "What is React.memo and how does it work?"
+
+You can answer:
+
+> "`React.memo` is a performance optimization that allows React to skip unnecessary rendering work for a component when its props have not changed. React compares the previous and next props, using shallow comparison with `Object.is` semantics for individual prop values. If the props are equivalent, React can bail out instead of rendering that component again. However, `React.memo` doesn't prevent updates caused by the component's own state, consumed context, or other subscriptions. It is most useful when a component renders frequently, its rendering is relatively expensive, and its props are stable."
+
+That's an **interview-level answer**.
+
+---
+
+## One final distinction you must never forget
+
+```text
+React.memo
+    ↓
+"Should this component's rendering work be skipped?"
+
+useMemo
+    ↓
+"Should I reuse this calculated value/reference?"
+
+useCallback
+    ↓
+"Should I reuse this function reference?"
+```
+
+And these three work together because of **referential equality**.
+
+---
+
+### Next: Part 6 — `useMemo()` Deep Dive
+
+We'll go inside:
+
+**what `useMemo` actually caches → dependency array → when recalculation happens → primitive vs object → expensive calculations → `useMemo` vs `React.memo` → why `useMemo` can actually make performance worse → stale values → advanced patterns.**
