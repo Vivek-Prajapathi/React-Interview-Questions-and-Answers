@@ -9030,3 +9030,1970 @@ Context optimization is about:
 The most important principle is:
 
 > **Do not optimize the component first. Optimize the update boundary first.**
+
+
+
+
+# PART 10 — EVENT OPTIMIZATION
+
+## 1. First: What is an Event?
+
+An **event** is something that happens in the browser that JavaScript can respond to.
+
+Examples:
+
+```text
+User types       → input event
+User clicks      → click event
+User scrolls     → scroll event
+User resizes     → resize event
+Mouse moves      → mousemove event
+Keyboard press   → keydown event
+```
+
+For example:
+
+```jsx
+<input onChange={handleChange} />
+```
+
+Whenever the user types, React receives an event and calls:
+
+```js
+handleChange(event)
+```
+
+So:
+
+```text
+User action
+    ↓
+Browser detects event
+    ↓
+React event system
+    ↓
+Your event handler
+    ↓
+Your code runs
+```
+
+The important problem is:
+
+> **Some events can happen extremely frequently.**
+
+And that's where event optimization becomes important.
+
+---
+
+# 2. Why Do We Need Event Optimization?
+
+Consider a search box.
+
+```jsx
+<input onChange={handleSearch} />
+```
+
+User types:
+
+```text
+r
+re
+rea
+reac
+react
+```
+
+That's **5 events**.
+
+If your handler makes an API request:
+
+```js
+function handleSearch(e) {
+  fetch(`/api/search?q=${e.target.value}`);
+}
+```
+
+you could get:
+
+```text
+r       → API call
+re      → API call
+rea     → API call
+reac    → API call
+react   → API call
+```
+
+The user only wanted:
+
+```text
+react → API call
+```
+
+So we generated unnecessary work.
+
+Now imagine scroll.
+
+A user scrolls for 2 seconds.
+
+The browser may fire many `scroll` events during that time.
+
+If every event does:
+
+```js
+calculateSomething();
+setState(...);
+API call();
+```
+
+we may create a lot of unnecessary work.
+
+So event optimization tries to control:
+
+> **How often expensive work is allowed to happen when events occur frequently.**
+
+The three major tools we'll learn are:
+
+```text
+Debouncing
+Throttling
+requestAnimationFrame
+```
+
+---
+
+# 3. Before Debounce: Understand `setTimeout`
+
+You need to understand this first.
+
+```js
+setTimeout(() => {
+  console.log("Hello");
+}, 1000);
+```
+
+This means:
+
+> Ask the browser to execute this callback after at least approximately 1000 ms, when the JavaScript thread is available.
+
+It does **not** mean:
+
+> "Pause JavaScript for 1 second."
+
+JavaScript does not stop.
+
+Conceptually:
+
+```text
+JavaScript
+   ↓
+setTimeout(callback, 1000)
+   ↓
+Timer registered with browser
+   ↓
+JavaScript continues
+   ↓
+~1000ms passes
+   ↓
+callback becomes eligible to run
+   ↓
+Event loop
+   ↓
+callback executes when call stack is available
+```
+
+This is important for understanding debounce.
+
+---
+
+# 4. What is Debouncing?
+
+### Definition
+
+**Debouncing means delaying execution until a period of inactivity has passed.**
+
+In simple words:
+
+> "Keep waiting while the event keeps happening. Execute only after the event stops for a certain amount of time."
+
+Suppose debounce delay = `500ms`.
+
+User types:
+
+```text
+r
+```
+
+Timer starts.
+
+```text
+r
+│
+└── wait 500ms
+```
+
+But before 500ms:
+
+```text
+re
+```
+
+The previous timer is cancelled.
+
+New timer starts.
+
+Then:
+
+```text
+rea
+```
+
+Previous timer cancelled.
+
+New timer starts.
+
+Then:
+
+```text
+reac
+```
+
+Previous timer cancelled.
+
+New timer starts.
+
+Then:
+
+```text
+react
+```
+
+Previous timer cancelled.
+
+New timer starts.
+
+Finally user stops typing.
+
+After 500ms:
+
+```text
+API CALL
+```
+
+So:
+
+```text
+r       → timer
+re      → cancel previous → new timer
+rea     → cancel previous → new timer
+reac    → cancel previous → new timer
+react   → cancel previous → new timer
+
+500ms silence
+      ↓
+API call
+```
+
+That's debounce.
+
+---
+
+# 5. Why Is It Called "Debounce"?
+
+Think of a mechanical button.
+
+If you physically press a button, the electrical signal can rapidly fluctuate:
+
+```text
+ON OFF ON OFF ON OFF
+```
+
+Instead of reacting to every tiny fluctuation, you wait until the signal becomes stable.
+
+Debouncing in software follows the same basic idea:
+
+> **Wait for the activity to settle before performing the action.**
+
+---
+
+# 6. Debounce with Search
+
+Let's write it in React.
+
+```jsx
+function Search() {
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      console.log("API CALL:", search);
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [search]);
+
+  return (
+    <input
+      value={search}
+      onChange={(e) => setSearch(e.target.value)}
+    />
+  );
+}
+```
+
+Now let's understand this **very carefully**.
+
+---
+
+# 7. What Actually Happens Internally?
+
+Initial render:
+
+```text
+search = ""
+```
+
+User types:
+
+```text
+r
+```
+
+This executes:
+
+```js
+setSearch("r")
+```
+
+React schedules a state update.
+
+React renders again.
+
+Now:
+
+```text
+search = "r"
+```
+
+The effect runs:
+
+```js
+setTimeout(() => {
+   API("r");
+}, 500);
+```
+
+Timer created:
+
+```text
+Timer #1
+```
+
+Now user types:
+
+```text
+e
+```
+
+State becomes:
+
+```text
+"re"
+```
+
+React renders again.
+
+Before running the new effect, React runs the previous effect's cleanup:
+
+```js
+clearTimeout(timer);
+```
+
+So:
+
+```text
+Timer #1 ❌ cancelled
+```
+
+Then new effect runs:
+
+```js
+setTimeout(() => {
+   API("re");
+}, 500);
+```
+
+Timer #2.
+
+Then user types:
+
+```text
+a
+```
+
+Same thing:
+
+```text
+Timer #2 ❌ cancelled
+
+Timer #3 created
+```
+
+Eventually:
+
+```text
+react
+```
+
+Timer created.
+
+Then user stops typing.
+
+No new render happens.
+
+So nobody cancels the final timer.
+
+After 500ms:
+
+```text
+Timer executes
+      ↓
+API call
+```
+
+This is the core of debouncing.
+
+---
+
+# 8. The Most Important Part of Debounce
+
+The important mechanism is:
+
+```js
+clearTimeout(previousTimer);
+setTimeout(newTimer);
+```
+
+Every new event:
+
+```text
+Cancel old timer
+      ↓
+Create new timer
+```
+
+Therefore the callback only survives when events stop.
+
+---
+
+# 9. Debounce from Scratch
+
+Let's build it without React.
+
+```js
+function debounce(fn, delay) {
+  let timer;
+
+  return (...args) => {
+    clearTimeout(timer);
+
+    timer = setTimeout(() => {
+      fn(...args);
+    }, delay);
+  };
+}
+```
+
+Usage:
+
+```js
+const search = debounce((value) => {
+  console.log("API:", value);
+}, 500);
+```
+
+Then:
+
+```js
+search("r");
+search("re");
+search("rea");
+search("reac");
+search("react");
+```
+
+Internally:
+
+```text
+search("r")
+   ↓
+timer = Timer 1
+
+search("re")
+   ↓
+clear Timer 1
+timer = Timer 2
+
+search("rea")
+   ↓
+clear Timer 2
+timer = Timer 3
+
+search("reac")
+   ↓
+clear Timer 3
+timer = Timer 4
+
+search("react")
+   ↓
+clear Timer 4
+timer = Timer 5
+
+500ms
+ ↓
+Timer 5 executes
+ ↓
+fn("react")
+```
+
+Only the last call survives.
+
+---
+
+# 10. Why Does `timer` Remember Its Value?
+
+This is where **closure** comes in.
+
+Remember:
+
+> A closure allows a function to retain access to variables from its surrounding lexical scope even after that outer function has finished executing.
+
+Here:
+
+```js
+function debounce(fn, delay) {
+  let timer;
+
+  return (...args) => {
+    clearTimeout(timer);
+
+    timer = setTimeout(...);
+  };
+}
+```
+
+`debounce()` returns the inner function.
+
+The `debounce()` function finishes.
+
+But the returned function still remembers:
+
+```js
+timer
+```
+
+So every time you call:
+
+```js
+search("r")
+search("re")
+search("react")
+```
+
+the same `timer` variable is accessed.
+
+That's how debounce can cancel the previous timer.
+
+---
+
+# 11. Debounce — Real-World Use Cases
+
+Debounce is excellent when you care about the **final result after activity stops**.
+
+Common examples:
+
+### Search
+
+```text
+User typing → wait → API request
+```
+
+### Autosave
+
+```text
+User editing document
+        ↓
+wait until user stops typing
+        ↓
+save
+```
+
+### Filter
+
+```text
+User changing filter
+        ↓
+wait
+        ↓
+expensive filtering
+```
+
+### Resize
+
+```text
+User resizing window
+        ↓
+wait until resize stops
+        ↓
+perform expensive calculation
+```
+
+---
+
+# 12. Now Throttling
+
+Debouncing asks:
+
+> "Has the event stopped?"
+
+Throttling asks:
+
+> **"How often am I allowed to run?"**
+
+### Definition
+
+**Throttling limits a function to execute at most once within a specified time interval.**
+
+Suppose:
+
+```text
+throttle delay = 1000ms
+```
+
+And events happen:
+
+```text
+0ms
+100ms
+200ms
+300ms
+400ms
+500ms
+600ms
+...
+```
+
+Throttle says:
+
+```text
+Run
+ ↓
+block execution for 1000ms
+ ↓
+after allowed interval, run again
+```
+
+So instead of:
+
+```text
+event event event event event event event
+↓     ↓     ↓     ↓     ↓     ↓     ↓
+run   run   run   run   run   run   run
+```
+
+you might get:
+
+```text
+event event event event event event
+↓
+RUN
+                  ↓
+                RUN
+                              ↓
+                            RUN
+```
+
+---
+
+# 13. Debounce vs Throttle — The Core Difference
+
+This is extremely important.
+
+### Debounce
+
+> **Wait until events stop.**
+
+Example:
+
+```text
+typing → typing → typing → typing → STOP
+                                      ↓
+                                    RUN
+```
+
+Best for:
+
+```text
+Search
+Autosave
+Final resize calculation
+```
+
+---
+
+### Throttle
+
+> **Allow execution periodically while events continue.**
+
+Example:
+
+```text
+scroll scroll scroll scroll scroll scroll
+   ↓
+ RUN        RUN        RUN        RUN
+```
+
+Best for:
+
+```text
+Scroll tracking
+Mouse movement
+Resize tracking
+Continuous user activity
+```
+
+---
+
+# 14. Simple Analogy
+
+Imagine someone keeps knocking on your door.
+
+### Debounce
+
+You say:
+
+> "I'll open the door only when they stop knocking."
+
+```text
+knock
+knock
+knock
+knock
+...
+silence
+↓
+open door
+```
+
+### Throttle
+
+You say:
+
+> "I'll open the door at most once every 5 minutes."
+
+```text
+knock
+↓
+open
+
+knock
+knock
+knock
+↓
+ignore
+
+5 minutes
+↓
+open again
+```
+
+That's the difference.
+
+---
+
+# 15. Throttle Implementation
+
+Basic version:
+
+```js
+function throttle(fn, delay) {
+  let lastTime = 0;
+
+  return (...args) => {
+    const now = Date.now();
+
+    if (now - lastTime >= delay) {
+      lastTime = now;
+      fn(...args);
+    }
+  };
+}
+```
+
+Usage:
+
+```js
+const handleScroll = throttle(() => {
+  console.log("scroll");
+}, 1000);
+```
+
+Now suppose scroll generates:
+
+```text
+0ms
+100ms
+200ms
+300ms
+1000ms
+1100ms
+2000ms
+```
+
+The function executes approximately:
+
+```text
+0ms     → RUN
+100ms   → skip
+200ms   → skip
+300ms   → skip
+1000ms  → RUN
+1100ms  → skip
+2000ms  → RUN
+```
+
+So execution is limited.
+
+---
+
+# 16. Why Does Throttle Work?
+
+Again, closure.
+
+```js
+let lastTime = 0;
+```
+
+The returned function remembers `lastTime`.
+
+Every event:
+
+```js
+const now = Date.now();
+
+if (now - lastTime >= delay) {
+   lastTime = now;
+   fn();
+}
+```
+
+So it asks:
+
+```text
+How much time passed since the last execution?
+```
+
+If enough time passed:
+
+```text
+execute
+```
+
+Otherwise:
+
+```text
+ignore
+```
+
+---
+
+# 17. Leading and Trailing Execution
+
+Now we're getting into more advanced throttle/debounce behavior.
+
+There are two concepts:
+
+```text
+Leading
+Trailing
+```
+
+### Leading
+
+Execute at the **beginning** of the event burst.
+
+Example:
+
+```text
+event
+ ↓
+RUN immediately
+```
+
+### Trailing
+
+Execute at the **end** of the event burst.
+
+Example:
+
+```text
+event event event event
+                    ↓
+                  STOP
+                    ↓
+                  RUN
+```
+
+---
+
+# 18. Debounce Usually Means Trailing
+
+Typical debounce:
+
+```text
+User types
+ ↓
+wait
+ ↓
+wait
+ ↓
+wait
+ ↓
+user stops
+ ↓
+execute
+```
+
+That's **trailing execution**.
+
+But debounce implementations can also support:
+
+```text
+leading: true
+```
+
+meaning:
+
+```text
+first event → execute immediately
+subsequent events → ignored/reset timer
+```
+
+Libraries such as Lodash provide configurable leading/trailing behavior.
+
+---
+
+# 19. Why Not Just Use Debounce Everywhere?
+
+Because debounce can make continuous interactions feel wrong.
+
+Imagine scroll.
+
+User is scrolling continuously:
+
+```text
+scroll
+scroll
+scroll
+scroll
+scroll
+scroll
+```
+
+With debounce:
+
+```text
+scroll → reset timer
+scroll → reset timer
+scroll → reset timer
+scroll → reset timer
+```
+
+If the user keeps scrolling, the callback may **never run until scrolling stops**.
+
+That's bad if you need continuous feedback.
+
+For example:
+
+```text
+scroll position → update progress bar
+```
+
+You don't want:
+
+```text
+scroll...
+scroll...
+scroll...
+STOP
+↓
+finally update progress
+```
+
+You want periodic updates while scrolling.
+
+That's where throttle or `requestAnimationFrame` becomes useful.
+
+---
+
+# 20. Scroll Example
+
+Without optimization:
+
+```jsx
+window.addEventListener("scroll", () => {
+  calculateSomethingExpensive();
+});
+```
+
+Potentially:
+
+```text
+scroll event
+scroll event
+scroll event
+scroll event
+scroll event
+scroll event
+...
+```
+
+Every event can invoke expensive JavaScript.
+
+With throttle:
+
+```text
+many scroll events
+       ↓
+throttle
+       ↓
+one execution per interval
+```
+
+With rAF:
+
+```text
+many scroll events
+       ↓
+schedule visual update
+       ↓
+browser's next animation frame
+       ↓
+update visual state
+```
+
+We'll get to rAF now.
+
+---
+
+# 21. What Is `requestAnimationFrame`?
+
+### Definition
+
+`requestAnimationFrame()` tells the browser:
+
+> **"Run this callback before the browser performs the next repaint/animation frame."**
+
+Example:
+
+```js
+requestAnimationFrame(() => {
+  console.log("Update visual state");
+});
+```
+
+The browser controls when the callback runs based on its rendering cycle.
+
+This makes it particularly useful for:
+
+```text
+Animations
+Visual updates
+Scroll-linked visual effects
+Dragging
+Mouse movement visuals
+```
+
+---
+
+# 22. Browser Rendering Loop
+
+At a high level, the browser repeatedly goes through work like:
+
+```text
+JavaScript
+   ↓
+Style calculation
+   ↓
+Layout
+   ↓
+Paint
+   ↓
+Composite
+   ↓
+Next frame
+```
+
+For a display running around 60Hz, the conceptual frame budget is approximately:
+
+```text
+1000 / 60 ≈ 16.67ms
+```
+
+That doesn't mean every browser must render exactly every 16.67ms, but it's a useful mental model.
+
+`requestAnimationFrame` allows you to coordinate visual JavaScript work with that rendering cycle.
+
+---
+
+# 23. `setTimeout` vs `requestAnimationFrame`
+
+### setTimeout
+
+```js
+setTimeout(update, 16);
+```
+
+You're saying:
+
+> "Try to run this after about 16ms."
+
+The timer isn't synchronized with the browser's paint cycle.
+
+---
+
+### requestAnimationFrame
+
+```js
+requestAnimationFrame(update);
+```
+
+You're saying:
+
+> "Run this when the browser is preparing the next visual frame."
+
+So:
+
+```text
+setTimeout
+   ↓
+timer-based scheduling
+```
+
+while:
+
+```text
+requestAnimationFrame
+   ↓
+browser rendering-cycle scheduling
+```
+
+For visual updates, rAF is generally the more appropriate primitive.
+
+---
+
+# 24. Why rAF Is Good for Animation
+
+Imagine moving an element.
+
+Bad conceptual approach:
+
+```js
+setInterval(() => {
+  element.style.transform = ...
+}, 10);
+```
+
+You're basically saying:
+
+> Run this on my timer.
+
+But the browser has its own rendering schedule.
+
+You can end up doing work:
+
+```text
+JavaScript update
+        ↓
+browser isn't ready to paint yet
+        ↓
+another update
+        ↓
+paint
+```
+
+rAF aligns the callback with the browser's animation frame:
+
+```text
+requestAnimationFrame
+        ↓
+browser schedules callback
+        ↓
+callback performs visual update
+        ↓
+browser renders frame
+```
+
+This helps avoid unnecessary visual updates.
+
+---
+
+# 25. Very Important: rAF Is NOT Debounce
+
+They solve different problems.
+
+### Debounce
+
+```text
+Events
+↓↓↓↓↓↓↓↓↓↓
+
+wait for silence
+
+                 ↓
+               execute
+```
+
+### Throttle
+
+```text
+Events
+↓↓↓↓↓↓↓↓↓↓
+
+execute periodically
+
+↓       ↓       ↓       ↓
+RUN     RUN     RUN     RUN
+```
+
+### requestAnimationFrame
+
+```text
+Events
+↓↓↓↓↓↓↓↓↓↓
+
+schedule visual work
+        ↓
+next browser frame
+        ↓
+RUN
+        ↓
+next frame
+        ↓
+RUN
+```
+
+---
+
+# 26. React-Specific Example: Search
+
+This is a very important distinction.
+
+Suppose:
+
+```jsx
+<input
+  value={search}
+  onChange={(e) => setSearch(e.target.value)}
+/>
+```
+
+Should we debounce `setSearch`?
+
+Usually, **no** if `search` controls the input.
+
+You generally want:
+
+```text
+User types
+ ↓
+setSearch immediately
+ ↓
+input updates immediately
+```
+
+The UI should feel responsive.
+
+Instead, debounce the expensive side effect:
+
+```text
+User types
+ ↓
+setSearch immediately
+ ↓
+React updates input
+ ↓
+debounced API request
+```
+
+That's a much better architecture.
+
+---
+
+# 27. Correct React Search Architecture
+
+```jsx
+function SearchBox() {
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (search.trim()) {
+        fetchResults(search);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  return (
+    <input
+      value={search}
+      onChange={(e) => setSearch(e.target.value)}
+    />
+  );
+}
+```
+
+The flow:
+
+```text
+User types "r"
+       ↓
+setSearch("r")
+       ↓
+Render
+       ↓
+Effect starts timer
+
+User types "re"
+       ↓
+setSearch("re")
+       ↓
+Render
+       ↓
+cleanup
+       ↓
+cancel old timer
+       ↓
+new timer
+
+...
+
+User stops
+       ↓
+500ms
+       ↓
+fetchResults("react")
+```
+
+This gives us:
+
+```text
+Fast UI
++
+Reduced API calls
+```
+
+---
+
+# 28. What Happens If We Don't Debounce?
+
+```text
+r
+ ↓
+API
+
+re
+ ↓
+API
+
+rea
+ ↓
+API
+
+reac
+ ↓
+API
+
+react
+ ↓
+API
+```
+
+Five requests.
+
+With debounce:
+
+```text
+r
+re
+rea
+reac
+react
+ ↓
+wait 500ms
+ ↓
+ONE API request
+```
+
+This reduces:
+
+- network requests
+- server load
+- response processing
+- React state updates caused by responses
+- unnecessary rendering
+- race-condition opportunities
+
+---
+
+# 29. Another Important Problem: Race Conditions
+
+Suppose you make API requests for:
+
+```text
+r
+re
+rea
+react
+```
+
+Requests can complete in an unexpected order.
+
+For example:
+
+```text
+Request A: "r"
+Request B: "re"
+Request C: "react"
+```
+
+Network:
+
+```text
+react → finishes first
+r     → finishes last
+```
+
+Then the old `"r"` response might overwrite the newer `"react"` result.
+
+Debouncing reduces the number of requests.
+
+But it does **not completely solve cancellation/race conditions**.
+
+That's why later in the roadmap we'll learn:
+
+```text
+AbortController
+request cancellation
+stale response handling
+```
+
+This is an important distinction.
+
+---
+
+# 30. Cleanup Is Critical in React
+
+Whenever you create:
+
+```text
+timer
+event listener
+subscription
+WebSocket
+observer
+```
+
+you need to think about cleanup.
+
+Example:
+
+```jsx
+useEffect(() => {
+  const timer = setTimeout(() => {
+    doSomething();
+  }, 500);
+
+  return () => {
+    clearTimeout(timer);
+  };
+}, [search]);
+```
+
+Why?
+
+Because when `search` changes:
+
+```text
+old effect
+   ↓
+cleanup
+   ↓
+clear old timer
+   ↓
+new effect
+   ↓
+new timer
+```
+
+This is exactly what gives us the debounce behavior.
+
+---
+
+# 31. Event Listener Cleanup
+
+Suppose:
+
+```jsx
+useEffect(() => {
+  function handleScroll() {
+    console.log(window.scrollY);
+  }
+
+  window.addEventListener("scroll", handleScroll);
+
+  return () => {
+    window.removeEventListener("scroll", handleScroll);
+  };
+}, []);
+```
+
+Without cleanup, you can accidentally keep listeners around when the component is removed or when an effect is recreated.
+
+That can lead to:
+
+```text
+memory leaks
++
+duplicate handlers
++
+unnecessary work
+```
+
+We'll cover memory optimization later in the roadmap.
+
+---
+
+# 32. Debounce vs Throttle vs rAF
+
+Memorize this table:
+
+| Technique | Main idea | Best use |
+|---|---|---|
+| Debounce | Run after activity stops | Search, autosave |
+| Throttle | Run at most once per interval | Scroll, resize, mouse events |
+| rAF | Run with browser's next visual frame | Animations, visual updates |
+
+Think:
+
+```text
+DEBOUNCE
+"Wait until they stop."
+
+THROTTLE
+"Slow down how often I respond."
+
+rAF
+"Coordinate visual work with the browser's frame."
+```
+
+---
+
+# 33. Internal Flow Comparison
+
+### Without optimization
+
+```text
+Event
+ ↓
+Handler
+ ↓
+Expensive work
+ ↓
+React update
+ ↓
+Render
+```
+
+Repeated many times:
+
+```text
+Event → work
+Event → work
+Event → work
+Event → work
+Event → work
+```
+
+---
+
+### Debounce
+
+```text
+Event
+ ↓
+cancel previous timer
+ ↓
+start timer
+ ↓
+new event?
+ ├─ YES → cancel + restart
+ └─ NO
+      ↓
+   execute
+```
+
+---
+
+### Throttle
+
+```text
+Event
+ ↓
+check last execution
+ ↓
+enough time?
+ ├─ NO → ignore
+ └─ YES
+      ↓
+    execute
+```
+
+---
+
+### requestAnimationFrame
+
+```text
+Event
+ ↓
+schedule frame update
+ ↓
+browser reaches next frame
+ ↓
+callback
+ ↓
+visual update
+```
+
+---
+
+# 34. One More Important Concept: Event Optimization ≠ React Optimization Only
+
+This is bigger than React.
+
+Suppose:
+
+```js
+window.addEventListener("scroll", handler);
+```
+
+Even without React, excessive event handling can hurt performance.
+
+Because JavaScript executes on the browser's main thread.
+
+So:
+
+```text
+Frequent events
+      ↓
+More JavaScript execution
+      ↓
+Main thread becomes busy
+      ↓
+Rendering can be delayed
+      ↓
+UI becomes less responsive
+```
+
+React adds another layer:
+
+```text
+Event
+ ↓
+setState
+ ↓
+React render work
+ ↓
+reconciliation
+ ↓
+possible commit
+```
+
+So frequent events can cause both:
+
+```text
+Browser work
++
+React work
+```
+
+---
+
+# 35. Example: Scroll + React State
+
+Bad:
+
+```jsx
+function ScrollTracker() {
+  const [scrollY, setScrollY] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
+  return <p>{scrollY}</p>;
+}
+```
+
+This may update React state very frequently during scrolling.
+
+Sometimes that's fine.
+
+But if the component tree is large or the work is expensive, it can become costly.
+
+We can throttle:
+
+```text
+scroll events
+      ↓
+throttle
+      ↓
+limited setState calls
+      ↓
+fewer React renders
+```
+
+Or use rAF when the goal is a visual update synchronized with frames.
+
+---
+
+# 36. But Don't Optimize Just Because an Event Is Frequent
+
+This is important.
+
+Not every frequent event is a performance problem.
+
+For example:
+
+```jsx
+<input onChange={...} />
+```
+
+A simple state update is usually completely fine.
+
+Don't automatically think:
+
+> "Input event = debounce."
+
+Instead ask:
+
+### What work happens because of the event?
+
+If it's:
+
+```text
+simple state update
+```
+
+probably fine.
+
+If it's:
+
+```text
+API request
+expensive calculation
+large filtering
+heavy rendering
+```
+
+then optimization may be useful.
+
+This follows the larger React optimization principle:
+
+> **Optimize the expensive work, not merely the existence of an event.**
+
+---
+
+# 37. How Event Optimization Connects to Everything We've Learned
+
+This is where the previous parts connect.
+
+Suppose:
+
+```jsx
+function Parent() {
+  const [search, setSearch] = useState("");
+
+  const results = expensiveSearch(products, search);
+
+  return <ProductList products={results} />;
+}
+```
+
+Typing causes:
+
+```text
+Input event
+ ↓
+setSearch
+ ↓
+Parent render
+ ↓
+expensiveSearch()
+ ↓
+ProductList render
+```
+
+Now we can optimize at different levels.
+
+### Event optimization
+
+Debounce API/search work:
+
+```text
+typing → wait → search
+```
+
+### State optimization
+
+Colocate search state so fewer components are affected.
+
+### useMemo
+
+```jsx
+const results = useMemo(
+  () => expensiveSearch(products, search),
+  [products, search]
+);
+```
+
+Avoid unnecessary recalculation.
+
+### React.memo
+
+```jsx
+const ProductList = memo(ProductList);
+```
+
+Potentially avoid unnecessary child rendering.
+
+### useCallback
+
+Keep callback references stable if passed to memoized children.
+
+So optimization is often a chain:
+
+```text
+Event optimization
+       ↓
+Fewer updates
+       ↓
+Less React work
+       ↓
+Less calculation
+       ↓
+Less component rendering
+       ↓
+Better responsiveness
+```
+
+---
+
+# 38. Interview Definitions
+
+### What is debouncing?
+
+> Debouncing is a technique where a function executes only after a specified period of inactivity. Each new event resets the timer. It is commonly used for search inputs, autosave, and expensive operations triggered by rapid input.
+
+### What is throttling?
+
+> Throttling limits how frequently a function can execute. Even if events occur continuously, the function is allowed to run at most once within a specified interval. It is commonly used for scroll, resize, and mouse movement events.
+
+### What is requestAnimationFrame?
+
+> `requestAnimationFrame` schedules a callback to run before the browser's next repaint, making it suitable for animations and other visual updates that should be synchronized with the browser's rendering cycle.
+
+### Difference between debounce and throttle?
+
+> Debouncing waits until events stop before executing, whereas throttling allows execution periodically while events continue.
+
+### Why use debounce in search?
+
+> Because users can generate multiple input events while typing. Debouncing delays the expensive API request until the user pauses, reducing unnecessary network requests and processing.
+
+### Why use throttle for scroll?
+
+> Scroll events can occur frequently. Throttling limits how often the handler performs expensive work while still allowing periodic updates during scrolling.
+
+### Why use requestAnimationFrame?
+
+> It is useful when JavaScript is updating something visual because the browser schedules the callback around its rendering cycle, making it more appropriate than arbitrary timers for animation-related work.
+
+---
+
+# 39. The Mental Model You Should Remember
+
+Don't memorize random definitions.
+
+Think like this:
+
+```text
+                FREQUENT EVENT
+                      │
+          ┌───────────┼───────────┐
+          │           │           │
+       Debounce     Throttle     rAF
+          │           │           │
+      Wait for      Limit        Sync with
+       silence      frequency    visual frame
+          │           │           │
+       Search       Scroll       Animation
+       Autosave     Resize       Dragging
+```
+
+And the deeper React connection:
+
+```text
+Frequent event
+      ↓
+JavaScript handler
+      ↓
+Maybe setState
+      ↓
+React render work
+      ↓
+Reconciliation
+      ↓
+Possible DOM update
+```
+
+Event optimization tries to reduce unnecessary work **before it becomes expensive React/browser work**.
+
+---
+
+# 40. The One-Line Difference
+
+If you remember nothing else:
+
+> **Debounce = "Wait until the user stops."**
+
+> **Throttle = "Run at a controlled frequency while the user continues."**
+
+> **requestAnimationFrame = "Run visual work in sync with the browser's next frame."**
+
+And one very important React rule:
+
+> **Don't debounce the UI state update just because the event is frequent; usually debounce the expensive side effect such as an API call.**
+
+That distinction is something interviewers often look for.
