@@ -1885,3 +1885,911 @@ Why?
 ```
 
 Then we'll use that understanding to introduce **`React.memo` properly**, including the part most tutorials skip: **what React actually compares and when the bailout happens.**
+
+# React Optimization — Part 3
+# What Exactly Causes a Component to Re-render?
+
+Now we get to one of the **most important concepts in React performance**.
+
+If you understand this properly, `React.memo`, `useMemo`, `useCallback`, Context optimization, Zustand selectors, etc. will become much easier.
+
+---
+
+# 1. First, remove one misconception
+
+A lot of people say:
+
+> "A component re-renders when its props change."
+
+That's **incomplete**.
+
+A component can re-render for several different reasons.
+
+The major ones are:
+
+```text
+1. Its own state changes
+2. Its parent renders
+3. Its props change
+4. Context it consumes changes
+5. An external store subscription changes
+```
+
+Let's understand each one **internally**.
+
+---
+
+# 2. Case #1 — Component's own state changes
+
+Consider:
+
+```jsx
+function Counter() {
+  const [count, setCount] = useState(0);
+
+  console.log("Counter rendered");
+
+  return (
+    <button onClick={() => setCount(count + 1)}>
+      {count}
+    </button>
+  );
+}
+```
+
+Initial render:
+
+```text
+Counter
+count = 0
+```
+
+You click the button:
+
+```text
+setCount(1)
+```
+
+React receives a state update.
+
+Conceptually:
+
+```text
+setCount(1)
+    ↓
+Update associated with Counter
+    ↓
+React schedules Counter
+    ↓
+Counter renders again
+```
+
+So:
+
+```text
+State changes
+      ↓
+Component re-renders
+```
+
+This is the simplest case.
+
+---
+
+# 3. But there is an interesting optimization
+
+What if you do:
+
+```jsx
+setCount(0);
+```
+
+when `count` is already:
+
+```text
+0
+```
+
+React can recognize that the state value hasn't meaningfully changed.
+
+Conceptually:
+
+```text
+Old state = 0
+New state = 0
+
+      ↓
+
+No meaningful state change
+      ↓
+React can bail out
+```
+
+This is another example of a **bailout**.
+
+---
+
+# 4. Case #2 — Parent re-renders
+
+This is extremely important.
+
+Consider:
+
+```jsx
+function Parent() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <>
+      <button onClick={() => setCount(count + 1)}>
+        {count}
+      </button>
+
+      <Child />
+    </>
+  );
+}
+```
+
+```jsx
+function Child() {
+  console.log("Child rendered");
+
+  return <h2>Hello</h2>;
+}
+```
+
+Now click the button.
+
+You might think:
+
+> "Only `Parent`'s state changed, so only Parent should render."
+
+But normally:
+
+```text
+Parent state changes
+       ↓
+Parent renders
+       ↓
+React processes its children
+       ↓
+Child can render
+```
+
+So:
+
+```text
+Parent
+  ↓
+Child
+```
+
+The child doesn't need to have its own state change.
+
+---
+
+# 5. Why does the child render?
+
+Because React's rendering model follows the component tree.
+
+Parent produces:
+
+```jsx
+<Child />
+```
+
+When Parent renders again, React needs to reconcile the output of Parent.
+
+Without memoization, React doesn't automatically assume:
+
+> "This child must be exactly the same."
+
+It processes the subtree according to React's reconciliation rules.
+
+---
+
+# 6. Very important distinction
+
+When we say:
+
+> "Parent re-render causes child re-render"
+
+don't interpret that as:
+
+> "The browser DOM of the child is recreated."
+
+That's wrong.
+
+Remember:
+
+```text
+Component render
+       ≠
+DOM recreation
+```
+
+The child may execute its component function again, while React ultimately performs **zero DOM changes** for that child.
+
+---
+
+# 7. Let's visualize it
+
+Suppose:
+
+```text
+App
+│
+├── Header
+├── Main
+│    ├── Search
+│    └── ProductList
+│         ├── Product
+│         ├── Product
+│         └── Product
+│
+└── Footer
+```
+
+If `App` updates:
+
+```text
+App renders
+   ↓
+Header processed
+   ↓
+Main processed
+   ↓
+Search processed
+   ↓
+ProductList processed
+   ↓
+Product components processed
+   ↓
+Footer processed
+```
+
+Potentially a lot of work.
+
+This is why **rendering scope** matters.
+
+---
+
+# 8. Case #3 — Props change
+
+Now consider:
+
+```jsx
+function Parent() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <>
+      <button onClick={() => setCount(count + 1)}>
+        {count}
+      </button>
+
+      <Child count={count} />
+    </>
+  );
+}
+```
+
+Child:
+
+```jsx
+function Child({ count }) {
+  console.log("Child rendered");
+
+  return <h2>{count}</h2>;
+}
+```
+
+Now:
+
+```text
+count changes
+     ↓
+Parent renders
+     ↓
+Child receives new prop
+     ↓
+Child renders
+```
+
+Here the child actually **needs** the new value.
+
+---
+
+# 9. But here's the important question
+
+What if the prop doesn't change?
+
+```jsx
+<Child name="Nikitha" />
+```
+
+Parent renders again.
+
+Is the string prop different?
+
+```text
+"Nikitha"
+"Nikitha"
+```
+
+No.
+
+But without memoization, Child can still be processed as part of the parent's rendering.
+
+Now we have a useful distinction:
+
+### Parent rendering
+
+and
+
+### Child deciding whether it needs to render
+
+are different things.
+
+This is where `React.memo` comes in.
+
+---
+
+# 10. Case #4 — Context changes
+
+Suppose:
+
+```jsx
+const ThemeContext = createContext();
+```
+
+Provider:
+
+```jsx
+function App() {
+  const [theme, setTheme] = useState("light");
+
+  return (
+    <ThemeContext.Provider value={theme}>
+      <Page />
+    </ThemeContext.Provider>
+  );
+}
+```
+
+Consumer:
+
+```jsx
+function Button() {
+  const theme = useContext(ThemeContext);
+
+  return (
+    <button className={theme}>
+      Click
+    </button>
+  );
+}
+```
+
+When:
+
+```js
+setTheme("dark");
+```
+
+happens:
+
+```text
+Theme changes
+      ↓
+Context value changes
+      ↓
+Components consuming that context
+      ↓
+need to update
+```
+
+This is why Context can become a performance problem if you put too much unrelated state into one context.
+
+---
+
+# 11. Context is NOT exactly the same as props
+
+Suppose:
+
+```jsx
+const Child = React.memo(function Child() {
+  const theme = useContext(ThemeContext);
+
+  return <div>{theme}</div>;
+});
+```
+
+You might think:
+
+> "React.memo means Child can never re-render unless props change."
+
+❌ No.
+
+`React.memo` primarily controls updates coming through **props/parent rendering paths**.
+
+If the component itself consumes a context and that context changes, the consumer needs to update.
+
+So:
+
+```text
+React.memo
+    ↓
+Can prevent some parent-driven renders
+
+BUT
+
+Context changes
+    ↓
+Consumer may still need to render
+```
+
+This distinction becomes very important later.
+
+---
+
+# 12. Case #5 — External stores
+
+Modern React applications often use state libraries.
+
+Examples:
+
+```text
+Redux
+Zustand
+MobX
+TanStack Query
+```
+
+A component might subscribe to some external state.
+
+For example, conceptually:
+
+```text
+Global Store
+     │
+     ├── user
+     ├── theme
+     ├── cart
+     └── products
+```
+
+If a component subscribes specifically to:
+
+```text
+cart
+```
+
+then ideally:
+
+```text
+theme changes
+     ↓
+Cart component
+     ↓
+should NOT need to render
+```
+
+This is why **selectors** are so important in state management optimization.
+
+We'll study this later.
+
+---
+
+# 13. The complete trigger map
+
+Remember this:
+
+```text
+                 COMPONENT UPDATE
+                       │
+       ┌───────────────┼────────────────┐
+       ↓               ↓                ↓
+    Own State       Parent           Context
+       │             renders          changes
+       ↓               │                ↓
+    Render            ↓             Consumer
+                 Child processed      updates
+       
+                       │
+                       ↓
+                 External Store
+                    changes
+                       ↓
+                  Subscriber
+                    updates
+```
+
+And props are involved when:
+
+```text
+Parent renders
+      ↓
+New props passed
+      ↓
+Child receives them
+```
+
+---
+
+# 14. Let's build a real example
+
+Consider:
+
+```jsx
+function App() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <>
+      <button onClick={() => setCount(count + 1)}>
+        {count}
+      </button>
+
+      <Header />
+      <User />
+      <ProductList />
+    </>
+  );
+}
+```
+
+Now click the button.
+
+What happens?
+
+```text
+setCount()
+   ↓
+App updates
+   ↓
+App renders
+   ↓
+Header is processed
+User is processed
+ProductList is processed
+```
+
+Even though:
+
+```text
+Header doesn't care about count
+User doesn't care about count
+ProductList doesn't care about count
+```
+
+This is the kind of situation where optimization can become useful.
+
+---
+
+# 15. Solution #1 — Move the state down
+
+Instead of:
+
+```text
+App
+│
+├── Counter
+├── Header
+├── User
+└── ProductList
+```
+
+where App owns the counter state, move the state into Counter:
+
+```text
+App
+│
+├── Counter
+│    └── count state
+│
+├── Header
+├── User
+└── ProductList
+```
+
+Now:
+
+```text
+Counter state changes
+       ↓
+Counter renders
+```
+
+rather than:
+
+```text
+App state changes
+       ↓
+Entire subtree potentially processes
+```
+
+This technique is called:
+
+# State Colocation
+
+And honestly, **state colocation is one of the most underrated React performance techniques**.
+
+---
+
+# 16. Optimization doesn't always mean memoization
+
+This is a major lesson.
+
+Beginners often see:
+
+```text
+unnecessary render
+```
+
+and immediately think:
+
+```jsx
+React.memo()
+```
+
+But sometimes the better solution is simply:
+
+> **Move the state closer to where it's needed.**
+
+For example:
+
+```text
+BAD ARCHITECTURE
+
+App owns search state
+      ↓
+Entire application responds
+```
+
+Better:
+
+```text
+ProductPage
+      ↓
+SearchBar owns search input state
+```
+
+Now unrelated components don't need to participate in that update.
+
+---
+
+# 17. State colocation can be more powerful than memoization
+
+Imagine:
+
+```text
+100 components
+```
+
+and only one needs a piece of state.
+
+Option A:
+
+```text
+Global state
+   ↓
+100 components potentially involved
+   ↓
+memoization everywhere
+```
+
+Option B:
+
+```text
+Local state
+   ↓
+1 component
+```
+
+Often B is much simpler and more efficient.
+
+This is why good React architecture is itself a performance optimization.
+
+---
+
+# 18. Another important concept: Render propagation
+
+Think of a parent update as work flowing down the tree:
+
+```text
+Parent update
+     ↓
+Parent render
+     ↓
+Children become candidates for reconciliation
+     ↓
+Their subtrees are processed unless React can bail out
+```
+
+Optimization tries to stop unnecessary work from propagating too far.
+
+For example:
+
+```text
+             App
+              │
+       ┌──────┴──────┐
+       ↓             ↓
+    Counter        Products
+       │
+    state update
+```
+
+Ideally, a Counter update shouldn't cause an expensive Products subtree to do unnecessary work.
+
+---
+
+# 19. Now we are ready for `React.memo`
+
+Before we move on, you need to understand one phrase:
+
+# "Bailout"
+
+Suppose:
+
+```jsx
+const ProductList = React.memo(function ProductList({ products }) {
+  ...
+});
+```
+
+Parent renders.
+
+React reaches ProductList.
+
+It checks the relevant props.
+
+Conceptually:
+
+```text
+Previous props
+products → reference A
+
+New props
+products → reference A
+```
+
+Same reference.
+
+React can say:
+
+```text
+"No relevant prop change.
+I can reuse the previous result."
+```
+
+That's the basic optimization idea.
+
+---
+
+# 20. But this leads to a huge topic
+
+What exactly does React compare?
+
+Suppose:
+
+```jsx
+<Product
+  name="Phone"
+  price={50000}
+  active={true}
+/>
+```
+
+Does React:
+
+```text
+deep compare every object?
+```
+
+No.
+
+Does it:
+
+```text
+compare every nested property recursively?
+```
+
+No.
+
+Then what does it do?
+
+This takes us directly into:
+
+# Referential Equality + Shallow Comparison
+
+And that is the key to understanding why:
+
+```text
+React.memo
+      +
+useMemo
+      +
+useCallback
+```
+
+work together.
+
+---
+
+# 🧠 Your mental model so far
+
+You should now have this:
+
+```text
+WHAT CAN TRIGGER WORK?
+
+1. Own state update
+2. Parent render
+3. New props
+4. Context update
+5. External store update
+```
+
+Then:
+
+```text
+React receives update
+       ↓
+Schedule work
+       ↓
+Render phase
+       ↓
+Reconciliation
+       ↓
+Can React bail out?
+       ↓
+Yes → reuse/skip appropriate work
+No  → continue rendering
+       ↓
+Commit phase
+       ↓
+DOM mutations
+```
+
+And the biggest optimization question becomes:
+
+> **"Can React avoid doing this work at all?"**
+
+That's the core idea behind React optimization.
+
+---
+
+## Next lesson 🔥
+
+**Part 4 — Referential Equality + Shallow Comparison + `React.memo`**
+
+We'll take this exact example:
+
+```jsx
+const user = {
+  name: "Nikitha"
+};
+```
+
+and go inside:
+
+```text
+Object reference
+       ↓
+Shallow comparison
+       ↓
+React.memo
+       ↓
+Why object props break memoization
+       ↓
+useMemo fixes object reference
+       ↓
+Why functions break memoization
+       ↓
+useCallback fixes function reference
+```
+
+This is where the **real inner working of `React.memo + useMemo + useCallback`** starts.
