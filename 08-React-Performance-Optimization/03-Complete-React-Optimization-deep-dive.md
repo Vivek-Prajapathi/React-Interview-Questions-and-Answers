@@ -4809,3 +4809,939 @@ And these three work together because of **referential equality**.
 We'll go inside:
 
 **what `useMemo` actually caches → dependency array → when recalculation happens → primitive vs object → expensive calculations → `useMemo` vs `React.memo` → why `useMemo` can actually make performance worse → stale values → advanced patterns.**
+
+# Part 6 — `useMemo()` Deep Dive 🔥
+
+Now let's understand `useMemo` from the **inside**, not just:
+
+> "`useMemo` is used for optimization."
+
+That definition is too shallow.
+
+---
+
+# 1. First understand the problem `useMemo` solves
+
+Imagine:
+
+```jsx
+function ProductList({ products }) {
+  const expensiveResult = calculateSomething(products);
+
+  return <div>{expensiveResult}</div>;
+}
+```
+
+Every time `ProductList` renders:
+
+```text
+ProductList renders
+      ↓
+calculateSomething()
+      ↓
+calculation runs AGAIN
+```
+
+Even if `products` didn't change.
+
+For an expensive calculation, this can become a problem.
+
+Example:
+
+```jsx
+const filteredProducts = products
+  .filter(...)
+  .sort(...)
+  .map(...);
+```
+
+If `products` contains:
+
+```text
+10,000 products
+```
+
+and the component renders frequently, you're repeatedly doing expensive work.
+
+---
+
+# 2. `useMemo` changes the flow
+
+```jsx
+const filteredProducts = useMemo(() => {
+  return products
+    .filter(...)
+    .sort(...);
+}, [products]);
+```
+
+Now conceptually:
+
+```text
+Component renders
+      ↓
+React checks dependencies
+      ↓
+Did products change?
+      ↓
+   NO ───────────── YES
+    ↓                 ↓
+reuse old value    calculate again
+                      ↓
+                  store result
+```
+
+That's the core idea.
+
+---
+
+# 3. What does `useMemo` actually return?
+
+Look at:
+
+```jsx
+const result = useMemo(() => {
+  return expensiveCalculation();
+}, []);
+```
+
+`result` is **the value returned by the callback**.
+
+For example:
+
+```jsx
+const total = useMemo(() => {
+  return 100 + 200;
+}, []);
+```
+
+Then:
+
+```js
+total === 300
+```
+
+Not the function.
+
+Compare:
+
+```jsx
+useMemo(() => {
+  return calculate();
+}, []);
+```
+
+with:
+
+```jsx
+useCallback(() => {
+  return calculate();
+}, []);
+```
+
+### `useMemo`
+
+```text
+callback
+   ↓
+execute
+   ↓
+cache returned VALUE
+```
+
+### `useCallback`
+
+```text
+function
+   ↓
+cache FUNCTION REFERENCE
+```
+
+---
+
+# 4. The internal mental model
+
+Suppose:
+
+```jsx
+const result = useMemo(
+  () => expensiveCalculation(data),
+  [data]
+);
+```
+
+React conceptually keeps something associated with this hook:
+
+```text
+Hook state
+
+┌──────────────────────────┐
+│ Previous dependencies    │
+│ [data reference]         │
+│                          │
+│ Cached value             │
+│ result                   │
+└──────────────────────────┘
+```
+
+On the next render:
+
+```text
+New dependencies
+      ↓
+Compare with previous dependencies
+      ↓
+Same?
+ ┌────┴────┐
+YES        NO
+ ↓          ↓
+reuse      calculate
+cached     again
+value        ↓
+            cache new value
+```
+
+This is why the dependency array matters so much.
+
+---
+
+# 5. Dependency array = "when should I recalculate?"
+
+Example:
+
+```jsx
+const result = useMemo(() => {
+  return expensiveCalculation(count);
+}, [count]);
+```
+
+If:
+
+```text
+count = 10
+```
+
+calculation runs.
+
+Next render:
+
+```text
+count = 10
+```
+
+React can reuse the previous value.
+
+Then:
+
+```text
+count = 11
+```
+
+Dependency changed.
+
+So:
+
+```text
+calculate again
+```
+
+---
+
+# 6. Think in terms of dependency identity
+
+This is where our previous lesson connects.
+
+Suppose:
+
+```jsx
+const user = {
+  name: "Nikitha"
+};
+
+const result = useMemo(() => {
+  return calculate(user);
+}, [user]);
+```
+
+Every render:
+
+```text
+new user object
+      ↓
+new reference
+      ↓
+dependency changed
+      ↓
+useMemo recalculates
+```
+
+So this:
+
+```jsx
+const user = {
+  name: "Nikitha"
+};
+```
+
+can defeat memoization.
+
+---
+
+# 7. `useMemo` does NOT prevent component rendering
+
+This is extremely important.
+
+Suppose:
+
+```jsx
+function App() {
+  const [count, setCount] = useState(0);
+
+  const result = useMemo(() => {
+    return expensiveCalculation();
+  }, []);
+
+  return <div>{count}</div>;
+}
+```
+
+When `count` changes:
+
+```text
+count changes
+     ↓
+App renders again
+     ↓
+useMemo runs its dependency check
+     ↓
+dependencies unchanged
+     ↓
+reuse cached result
+```
+
+So:
+
+> **The component still renders.**
+
+`useMemo` only prevents the calculation from being executed again.
+
+---
+
+# 8. This distinction is critical
+
+### `React.memo`
+
+```text
+Can skip component rendering work
+```
+
+### `useMemo`
+
+```text
+Can skip recalculating a value
+```
+
+Example:
+
+```jsx
+const Child = React.memo(...);
+
+const expensiveValue = useMemo(...);
+```
+
+They solve **different problems**.
+
+---
+
+# 9. Example: expensive calculation
+
+Suppose:
+
+```jsx
+function ProductList({ products, search }) {
+  const filteredProducts = products
+    .filter(product =>
+      product.name
+        .toLowerCase()
+        .includes(search.toLowerCase())
+    )
+    .sort((a, b) => a.price - b.price);
+
+  return (
+    <div>
+      {filteredProducts.map(product => (
+        <Product key={product.id} product={product} />
+      ))}
+    </div>
+  );
+}
+```
+
+Every render:
+
+```text
+render
+ ↓
+filter 10,000 items
+ ↓
+sort
+ ↓
+map
+```
+
+Now:
+
+```jsx
+const filteredProducts = useMemo(() => {
+  return products
+    .filter(product =>
+      product.name
+        .toLowerCase()
+        .includes(search.toLowerCase())
+    )
+    .sort((a, b) => a.price - b.price);
+}, [products, search]);
+```
+
+Now:
+
+```text
+Parent renders
+      ↓
+products/search changed?
+      ↓
+NO
+      ↓
+reuse filteredProducts
+```
+
+That's a good use case.
+
+---
+
+# 10. But here's something people misunderstand
+
+This:
+
+```jsx
+const value = useMemo(() => 10 + 20, []);
+```
+
+is usually pointless.
+
+Why?
+
+Because:
+
+```js
+10 + 20
+```
+
+is incredibly cheap.
+
+You're adding:
+
+```text
+memoization overhead
++
+dependency comparison
++
+memory for cached value
+```
+
+to avoid:
+
+```text
+30
+```
+
+which costs almost nothing to calculate.
+
+So:
+
+> **Memoization itself has a cost.**
+
+---
+
+# 11. This is why you should NOT use `useMemo` everywhere
+
+Bad:
+
+```jsx
+const fullName = useMemo(() => {
+  return firstName + " " + lastName;
+}, [firstName, lastName]);
+```
+
+Usually unnecessary.
+
+Better:
+
+```jsx
+const fullName = firstName + " " + lastName;
+```
+
+Because the calculation is trivial.
+
+---
+
+# 12. Good `useMemo` candidate
+
+Something like:
+
+```jsx
+const sortedProducts = useMemo(() => {
+  return [...products].sort((a, b) => a.price - b.price);
+}, [products]);
+```
+
+Potentially useful because sorting a large collection can be expensive.
+
+Especially if:
+
+```text
+large dataset
++
+frequent renders
++
+same dependencies most of the time
+```
+
+That's where memoization starts making sense.
+
+---
+
+# 13. Another important use: stable object references
+
+Remember our `React.memo` problem?
+
+```jsx
+const user = {
+  name: "Nikitha"
+};
+```
+
+You can do:
+
+```jsx
+const user = useMemo(() => ({
+  name: "Nikitha"
+}), []);
+```
+
+Now:
+
+```text
+Render 1
+user → Object A
+
+Render 2
+user → Object A
+
+Render 3
+user → Object A
+```
+
+Therefore:
+
+```text
+same reference
+```
+
+This can help a memoized child:
+
+```jsx
+const Child = React.memo(ChildComponent);
+```
+
+But remember:
+
+> Don't use `useMemo` merely to make every object stable. Do it when that stability actually matters.
+
+---
+
+# 14. `useMemo` and referential equality
+
+This is one of the most important connections in React optimization.
+
+Suppose:
+
+```jsx
+const data = useMemo(() => {
+  return {
+    name: "Nikitha"
+  };
+}, []);
+```
+
+Then:
+
+```js
+previousData === currentData
+```
+
+can remain:
+
+```text
+true
+```
+
+This helps with:
+
+- `React.memo`
+- dependency arrays
+- memoized selectors
+- optimized child components
+
+So `useMemo` isn't only about expensive calculations.
+
+It can also be about **stable identity**.
+
+---
+
+# 15. Dependency arrays are not "run this every X time"
+
+This is a common beginner misunderstanding.
+
+This:
+
+```jsx
+useMemo(() => {
+  calculate();
+}, [count]);
+```
+
+does NOT mean:
+
+> "Run whenever React feels like it."
+
+It means conceptually:
+
+```text
+Compare count from previous render
+          ↓
+Has dependency changed?
+          ↓
+YES → recompute
+NO  → reuse previous value
+```
+
+---
+
+# 16. What does React compare?
+
+For dependencies, React compares values using `Object.is` semantics.
+
+Example:
+
+```js
+Object.is(10, 10)
+// true
+```
+
+So no recalculation.
+
+But:
+
+```js
+Object.is({}, {})
+// false
+```
+
+So React considers them different.
+
+This is why:
+
+```jsx
+const options = {
+  sort: "price"
+};
+
+useMemo(() => {
+  calculate(options);
+}, [options]);
+```
+
+can recalculate every render if `options` is recreated every render.
+
+---
+
+# 17. A subtle problem: wrong dependencies
+
+Suppose:
+
+```jsx
+function Component({ price, quantity }) {
+  const total = useMemo(() => {
+    return price * quantity;
+  }, [price]);
+}
+```
+
+This is wrong.
+
+Because the calculation uses:
+
+```text
+price
+quantity
+```
+
+but the dependency list only contains:
+
+```text
+price
+```
+
+If quantity changes:
+
+```text
+quantity changes
+     ↓
+useMemo doesn't know
+     ↓
+old cached total may be reused
+```
+
+You could get stale data.
+
+Correct:
+
+```jsx
+const total = useMemo(() => {
+  return price * quantity;
+}, [price, quantity]);
+```
+
+---
+
+# 18. Think of dependencies as a contract
+
+When you write:
+
+```jsx
+useMemo(() => {
+  return expensiveCalculation(a, b, c);
+}, [a, b, c]);
+```
+
+you're effectively telling React:
+
+> "The result depends on `a`, `b`, and `c`. If none of these changed, the previous result is valid."
+
+That's the mental model I want you to remember.
+
+---
+
+# 19. `useMemo` vs `useCallback`
+
+This gets asked constantly.
+
+### `useMemo`
+
+```jsx
+const value = useMemo(() => {
+  return calculate();
+}, [dependencies]);
+```
+
+Caches:
+
+```text
+VALUE
+```
+
+### `useCallback`
+
+```jsx
+const fn = useCallback(() => {
+  doSomething();
+}, [dependencies]);
+```
+
+Caches:
+
+```text
+FUNCTION REFERENCE
+```
+
+And conceptually:
+
+```jsx
+useCallback(fn, deps)
+```
+
+is similar to:
+
+```jsx
+useMemo(() => fn, deps)
+```
+
+The purpose is clearer with `useCallback`, though.
+
+---
+
+# 20. `useMemo` + `React.memo`
+
+Now let's combine everything.
+
+```jsx
+const Child = React.memo(function Child({ data }) {
+  console.log("Child render");
+
+  return <div>{data.name}</div>;
+});
+```
+
+Parent:
+
+```jsx
+function Parent() {
+  const [count, setCount] = useState(0);
+
+  const data = useMemo(() => ({
+    name: "Nikitha"
+  }), []);
+
+  return (
+    <>
+      <button onClick={() => setCount(count + 1)}>
+        {count}
+      </button>
+
+      <Child data={data} />
+    </>
+  );
+}
+```
+
+Flow:
+
+```text
+count changes
+      ↓
+Parent renders
+      ↓
+useMemo checks dependencies
+      ↓
+dependencies unchanged
+      ↓
+same data reference
+      ↓
+React.memo checks Child props
+      ↓
+data reference same
+      ↓
+BAILOUT
+      ↓
+Child doesn't need to render
+```
+
+This is the real optimization chain.
+
+---
+
+# 21. But don't fall into this trap
+
+Some developers write:
+
+```jsx
+const data = useMemo(() => ({
+  name: "Nikitha"
+}), []);
+
+const value = useMemo(() => {
+  return calculate();
+}, []);
+
+const fn = useCallback(() => {}, []);
+```
+
+everywhere.
+
+That doesn't automatically make the application faster.
+
+You should first ask:
+
+```text
+1. Is this component rendering unnecessarily?
+2. Is this calculation expensive?
+3. Is this value causing another component to rerender?
+4. Are dependencies stable?
+5. Did profiling show this as a bottleneck?
+```
+
+Then optimize.
+
+---
+
+# 22. One powerful mental model
+
+Think of `useMemo` as a small cache:
+
+```text
+                 ┌────────────────────┐
+                 │      useMemo        │
+                 │                    │
+dependencies ──► │ Should I reuse it? │
+                 │                    │
+                 │ cached value       │
+                 └─────────┬──────────┘
+                           │
+                  ┌────────┴────────┐
+                  │                 │
+               unchanged          changed
+                  │                 │
+                  ↓                 ↓
+              reuse value       calculate
+```
+
+That's essentially what you're learning.
+
+---
+
+# 23. Interview answer 🎯
+
+If they ask:
+
+### "What is useMemo?"
+
+Say:
+
+> "`useMemo` is a React Hook used to memoize the result of a calculation. React stores the previously calculated value and compares the dependency array on subsequent renders. If the dependencies haven't changed, React can reuse the previous value instead of recalculating it. It doesn't prevent the component itself from rendering; it only avoids repeating the memoized calculation. It's useful for expensive computations or when a stable object or array reference is important for preventing unnecessary downstream renders."
+
+That's a strong answer.
+
+---
+
+# 24. The optimization chain so far
+
+You now have these three concepts connected:
+
+```text
+                 React Optimization
+                        │
+          ┌─────────────┼─────────────┐
+          ↓             ↓             ↓
+     React.memo      useMemo      useCallback
+          │             │             │
+          ↓             ↓             ↓
+   skip component   cache value    cache function
+      work          / reference      reference
+          │             │             │
+          └─────────────┼─────────────┘
+                        ↓
+                Referential Equality
+                        ↓
+                 Stable References
+                        ↓
+                     Bailouts
+```
+
+This is the foundation of React performance optimization.
+
+---
+
+## Next — Part 7: `useCallback()` Deep Dive
+
+We'll go deeper into **why functions are recreated, closures, dependency arrays, stale closures, `useCallback` + `React.memo`, when `useCallback` actually helps, and when it is completely useless**.
