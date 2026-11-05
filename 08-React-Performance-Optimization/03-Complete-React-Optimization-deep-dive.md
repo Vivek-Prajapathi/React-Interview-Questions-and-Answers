@@ -5745,3 +5745,1326 @@ This is the foundation of React performance optimization.
 ## Next — Part 7: `useCallback()` Deep Dive
 
 We'll go deeper into **why functions are recreated, closures, dependency arrays, stale closures, `useCallback` + `React.memo`, when `useCallback` actually helps, and when it is completely useless**.
+
+
+
+# Part 7 — `useCallback()` Deep Dive
+
+The biggest mistake people make with `useCallback` is memorizing:
+
+> "`useCallback` memoizes a function."
+
+That is technically true, but it doesn't explain **why we need it**.
+
+Let's build the concept from JavaScript first.
+
+---
+
+# 1. First understand the real problem: functions are objects
+
+Consider:
+
+```jsx
+function Parent() {
+  const handleClick = () => {
+    console.log("Clicked");
+  };
+
+  return <Child onClick={handleClick} />;
+}
+```
+
+You might look at this and think:
+
+> "`handleClick` is the same function every time."
+
+It isn't.
+
+Every time `Parent()` executes, JavaScript creates a **new function object**.
+
+Think about it like this.
+
+### First render
+
+```text
+Parent()
+   ↓
+creates Function A
+
+handleClick ───────► Function A
+```
+
+### Second render
+
+```text
+Parent()
+   ↓
+creates Function B
+
+handleClick ───────► Function B
+```
+
+So:
+
+```js
+FunctionA === FunctionB
+```
+
+is:
+
+```js
+false
+```
+
+Even though the code looks identical.
+
+---
+
+# 2. Prove it with JavaScript
+
+```js
+const fn1 = () => {
+  console.log("hello");
+};
+
+const fn2 = () => {
+  console.log("hello");
+};
+
+console.log(fn1 === fn2);
+```
+
+Result:
+
+```text
+false
+```
+
+Why?
+
+Because these are two separate function objects.
+
+```text
+fn1 ─────► Function Object A
+
+fn2 ─────► Function Object B
+```
+
+The function **code looks the same**, but their **references are different**.
+
+---
+
+# 3. Why does this matter in React?
+
+Now combine this with what we learned about `React.memo`.
+
+Suppose:
+
+```jsx
+const Child = React.memo(function Child({ onClick }) {
+  console.log("Child rendered");
+
+  return <button onClick={onClick}>Click</button>;
+});
+```
+
+Parent:
+
+```jsx
+function Parent() {
+  const [count, setCount] = useState(0);
+
+  const handleClick = () => {
+    console.log("Clicked");
+  };
+
+  return (
+    <>
+      <button onClick={() => setCount(count + 1)}>
+        {count}
+      </button>
+
+      <Child onClick={handleClick} />
+    </>
+  );
+}
+```
+
+Now click the counter.
+
+---
+
+# 4. Follow the complete internal flow
+
+Initially:
+
+```text
+Parent render
+      ↓
+handleClick = Function A
+      ↓
+Child receives Function A
+```
+
+Then:
+
+```text
+setCount()
+      ↓
+Parent state changes
+      ↓
+Parent renders again
+      ↓
+handleClick = Function B
+      ↓
+Child receives Function B
+```
+
+React.memo asks:
+
+```text
+Previous onClick === New onClick?
+```
+
+Result:
+
+```js
+FunctionA === FunctionB
+// false
+```
+
+Therefore:
+
+```text
+Props changed
+     ↓
+React.memo cannot bail out
+     ↓
+Child renders
+```
+
+This happens even though the function's implementation didn't change.
+
+---
+
+# 5. Now `useCallback` enters
+
+We can write:
+
+```jsx
+const handleClick = useCallback(() => {
+  console.log("Clicked");
+}, []);
+```
+
+Now React can preserve the function reference between renders.
+
+Conceptually:
+
+### First render
+
+```text
+useCallback
+    ↓
+creates Function A
+    ↓
+stores Function A
+    ↓
+returns Function A
+```
+
+### Second render
+
+```text
+useCallback
+    ↓
+checks dependencies
+    ↓
+dependencies unchanged
+    ↓
+returns previously stored Function A
+```
+
+So:
+
+```text
+Render 1:
+
+handleClick ───► Function A
+
+
+Render 2:
+
+handleClick ───► Function A
+```
+
+Now:
+
+```js
+previousOnClick === newOnClick
+```
+
+is:
+
+```text
+true
+```
+
+Therefore:
+
+```text
+React.memo
+    ↓
+props equal
+    ↓
+BAILOUT
+```
+
+---
+
+# 6. The actual mental model of `useCallback`
+
+Think of `useCallback` as:
+
+> **"React, give me the same function reference until one of these dependencies changes."**
+
+Example:
+
+```jsx
+const handleClick = useCallback(() => {
+  console.log(count);
+}, [count]);
+```
+
+You're essentially saying:
+
+```text
+If count is the same
+    ↓
+reuse the same function
+
+If count changes
+    ↓
+create a new function
+```
+
+---
+
+# 7. Why does the dependency array matter?
+
+This is where things become more interesting.
+
+Consider:
+
+```jsx
+function Counter() {
+  const [count, setCount] = useState(0);
+
+  const handleClick = useCallback(() => {
+    console.log(count);
+  }, [count]);
+
+  return (
+    <button onClick={handleClick}>
+      Click
+    </button>
+  );
+}
+```
+
+The callback uses:
+
+```text
+count
+```
+
+Therefore `count` is a dependency.
+
+---
+
+# 8. Follow the renders
+
+### Initial render
+
+```text
+count = 0
+
+useCallback
+    ↓
+creates Function A
+    ↓
+Function A remembers count = 0
+```
+
+Now:
+
+```text
+handleClick → Function A
+```
+
+Click/update count:
+
+```text
+count = 1
+```
+
+React renders again.
+
+Dependency changed:
+
+```text
+previous count = 0
+new count = 1
+```
+
+Therefore:
+
+```text
+useCallback
+      ↓
+dependency changed
+      ↓
+create Function B
+      ↓
+Function B remembers count = 1
+```
+
+Now:
+
+```text
+handleClick → Function B
+```
+
+This is correct.
+
+---
+
+# 9. Why can't React keep the same function forever?
+
+Because the function may depend on changing values.
+
+Example:
+
+```jsx
+const handleClick = useCallback(() => {
+  console.log(count);
+}, [count]);
+```
+
+Suppose React kept Function A forever:
+
+```text
+Function A
+   ↓
+remembers count = 0
+```
+
+Even after:
+
+```text
+count = 5
+```
+
+the function could still use the old value.
+
+That leads us to one of the most important React concepts:
+
+# Closures
+
+---
+
+# 10. Understanding closures is essential for `useCallback`
+
+Consider normal JavaScript:
+
+```js
+function createFunction() {
+  let count = 10;
+
+  return function () {
+    console.log(count);
+  };
+}
+
+const fn = createFunction();
+
+fn();
+```
+
+The returned function remembers the environment in which it was created.
+
+That's a closure.
+
+In React:
+
+```jsx
+function Counter() {
+  const [count, setCount] = useState(0);
+
+  const handleClick = () => {
+    console.log(count);
+  };
+}
+```
+
+The function created during a particular render closes over the values from that render.
+
+---
+
+# 11. Think of every render as a snapshot
+
+This is a very powerful React mental model.
+
+Suppose:
+
+```text
+Render #1
+count = 0
+```
+
+The function created there sees:
+
+```text
+count = 0
+```
+
+Then:
+
+```text
+Render #2
+count = 1
+```
+
+The function created there sees:
+
+```text
+count = 1
+```
+
+Then:
+
+```text
+Render #3
+count = 2
+```
+
+The function created there sees:
+
+```text
+count = 2
+```
+
+So:
+
+```text
+Render #1
+ └── Function A → count = 0
+
+Render #2
+ └── Function B → count = 1
+
+Render #3
+ └── Function C → count = 2
+```
+
+This is why dependency management matters.
+
+---
+
+# 12. What happens if you give the wrong dependencies?
+
+Consider:
+
+```jsx
+const handleClick = useCallback(() => {
+  console.log(count);
+}, []);
+```
+
+Notice:
+
+```text
+count is used
+```
+
+but:
+
+```text
+count is NOT in dependencies
+```
+
+Now imagine:
+
+### Render 1
+
+```text
+count = 0
+
+Function A
+   ↓
+remembers count = 0
+```
+
+Because dependency array is:
+
+```js
+[]
+```
+
+React keeps Function A.
+
+Then:
+
+```text
+count = 1
+```
+
+Component renders again.
+
+But:
+
+```text
+dependencies []
+```
+
+haven't changed.
+
+So React reuses Function A.
+
+Therefore:
+
+```text
+handleClick
+    ↓
+Function A
+    ↓
+count = 0
+```
+
+You expected:
+
+```text
+count = 1
+```
+
+This is a **stale closure**.
+
+---
+
+# 13. Stale closure
+
+A stale closure means:
+
+> A function is using an older value from a previous render because it retained a closure over that old value.
+
+Example:
+
+```jsx
+function Counter() {
+  const [count, setCount] = useState(0);
+
+  const handleClick = useCallback(() => {
+    console.log(count);
+  }, []);
+
+  return (
+    <>
+      <button onClick={() => setCount(count + 1)}>
+        Increment
+      </button>
+
+      <button onClick={handleClick}>
+        Show count
+      </button>
+    </>
+  );
+}
+```
+
+After clicking increment five times, you might expect:
+
+```text
+5
+```
+
+But `handleClick` can still see:
+
+```text
+0
+```
+
+because the callback was created during the initial render and its dependency list tells React it never needs to be replaced.
+
+---
+
+# 14. Correct version
+
+```jsx
+const handleClick = useCallback(() => {
+  console.log(count);
+}, [count]);
+```
+
+Now:
+
+```text
+count changes
+      ↓
+dependency changes
+      ↓
+new callback
+      ↓
+new closure
+      ↓
+callback sees latest count
+```
+
+---
+
+# 15. This gives us an important rule
+
+> **Every reactive value used inside a callback generally needs to be represented in the callback's dependency relationship.**
+
+For example:
+
+```jsx
+const handleClick = useCallback(() => {
+  console.log(user.name);
+  console.log(count);
+  submit(data);
+}, [user, count, data]);
+```
+
+Because the callback depends on:
+
+```text
+user
+count
+data
+```
+
+The dependency array describes when the callback needs to be recreated to capture updated values.
+
+---
+
+# 16. `useCallback` does NOT make a function execute faster
+
+Very important.
+
+This:
+
+```jsx
+const handleClick = useCallback(() => {
+  expensiveCalculation();
+}, []);
+```
+
+does **not** make:
+
+```js
+expensiveCalculation()
+```
+
+faster.
+
+`useCallback` is primarily about **function identity/reference stability**.
+
+It answers:
+
+```text
+"Is this the same function reference?"
+```
+
+not:
+
+```text
+"Does this function execute faster?"
+```
+
+---
+
+# 17. `useCallback` becomes powerful with `React.memo`
+
+This is the most common practical combination.
+
+```jsx
+const Button = React.memo(function Button({ onClick }) {
+  console.log("Button rendered");
+
+  return <button onClick={onClick}>Click</button>;
+});
+```
+
+Parent:
+
+```jsx
+function Parent() {
+  const [count, setCount] = useState(0);
+
+  const handleClick = useCallback(() => {
+    console.log("clicked");
+  }, []);
+
+  return (
+    <>
+      <button onClick={() => setCount(count + 1)}>
+        {count}
+      </button>
+
+      <Button onClick={handleClick} />
+    </>
+  );
+}
+```
+
+Flow:
+
+```text
+count changes
+     ↓
+Parent renders
+     ↓
+useCallback checks []
+     ↓
+same dependency
+     ↓
+same function reference
+     ↓
+Button receives same onClick
+     ↓
+React.memo comparison
+     ↓
+props equal
+     ↓
+Button bails out
+```
+
+This is a meaningful optimization.
+
+---
+
+# 18. Without `React.memo`, `useCallback` may accomplish nothing
+
+Suppose:
+
+```jsx
+function Button({ onClick }) {
+  console.log("Button rendered");
+
+  return <button onClick={onClick}>Click</button>;
+}
+```
+
+Parent:
+
+```jsx
+const handleClick = useCallback(() => {
+  console.log("clicked");
+}, []);
+```
+
+The function reference is stable.
+
+But if the parent renders:
+
+```text
+Parent renders
+    ↓
+Button renders
+```
+
+The child isn't memoized.
+
+So there may be no bailout.
+
+This is a key point:
+
+```text
+useCallback
+    ↓
+stable function reference
+    ↓
+useful when something cares about reference equality
+```
+
+For example:
+
+- `React.memo`
+- dependency arrays
+- certain custom hooks
+- subscription APIs
+
+---
+
+# 19. Another important use: dependency arrays
+
+Consider:
+
+```jsx
+useEffect(() => {
+  subscribe(handleClick);
+
+  return () => {
+    unsubscribe(handleClick);
+  };
+}, [handleClick]);
+```
+
+If `handleClick` is recreated every render:
+
+```text
+Render
+ ↓
+new handleClick
+ ↓
+useEffect dependency changed
+ ↓
+cleanup
+ ↓
+subscribe again
+```
+
+This can happen repeatedly.
+
+Using:
+
+```jsx
+const handleClick = useCallback(() => {
+  // ...
+}, []);
+```
+
+can stabilize the dependency when appropriate.
+
+But don't automatically add `useCallback`; first understand why the effect depends on that function.
+
+---
+
+# 20. `useCallback` and child components
+
+Imagine:
+
+```jsx
+function Parent() {
+  const [theme, setTheme] = useState("dark");
+
+  const handleSubmit = () => {
+    console.log("submit");
+  };
+
+  return (
+    <Form onSubmit={handleSubmit} />
+  );
+}
+```
+
+If `Form` is:
+
+```jsx
+const Form = React.memo(...);
+```
+
+then changing theme can cause:
+
+```text
+theme changes
+   ↓
+Parent renders
+   ↓
+new handleSubmit function
+   ↓
+Form gets new prop
+   ↓
+Form renders
+```
+
+Even though Form doesn't care about theme.
+
+With:
+
+```jsx
+const handleSubmit = useCallback(() => {
+  console.log("submit");
+}, []);
+```
+
+you get:
+
+```text
+theme changes
+   ↓
+Parent renders
+   ↓
+same handleSubmit reference
+   ↓
+Form props unchanged
+   ↓
+Form can bail out
+```
+
+---
+
+# 21. But there is a catch
+
+Suppose:
+
+```jsx
+const handleSubmit = useCallback(() => {
+  submit(user);
+}, [user]);
+```
+
+Now if `user` changes:
+
+```text
+user changes
+   ↓
+dependency changes
+   ↓
+new function
+```
+
+That's completely correct.
+
+Don't try to force the function to remain stable if it genuinely depends on changing data.
+
+The goal isn't:
+
+> "Make function reference never change."
+
+The goal is:
+
+> **"Make the function reference change only when its behavior needs to change."**
+
+That's a much better mental model.
+
+---
+
+# 22. A common mistake
+
+People sometimes do:
+
+```jsx
+const handleClick = useCallback(() => {
+  setCount(count + 1);
+}, [count]);
+```
+
+This is valid.
+
+But there's another approach:
+
+```jsx
+const handleClick = useCallback(() => {
+  setCount(prev => prev + 1);
+}, []);
+```
+
+Why can this work?
+
+Because the updater function:
+
+```js
+prev => prev + 1
+```
+
+gets the latest state from React.
+
+So the callback doesn't need to close over `count`.
+
+Therefore:
+
+```text
+count dependency
+     ↓
+not needed
+```
+
+and the function can remain stable.
+
+---
+
+# 23. This is a powerful optimization pattern
+
+Compare:
+
+### Version 1
+
+```jsx
+const handleIncrement = useCallback(() => {
+  setCount(count + 1);
+}, [count]);
+```
+
+Every time count changes:
+
+```text
+new callback
+```
+
+### Version 2
+
+```jsx
+const handleIncrement = useCallback(() => {
+  setCount(prev => prev + 1);
+}, []);
+```
+
+The callback can remain stable.
+
+Because:
+
+```text
+React gives updater latest state
+```
+
+This is one of the more advanced patterns you should understand.
+
+---
+
+# 24. `useCallback` itself has overhead
+
+Just like `useMemo`, `useCallback` isn't free.
+
+React has to:
+
+```text
+store callback
++
+store dependencies
++
+compare dependencies
++
+maintain hook state
+```
+
+Therefore this:
+
+```jsx
+const hello = useCallback(() => {
+  console.log("hello");
+}, []);
+```
+
+doesn't automatically improve performance.
+
+If the function isn't being passed to a memoized child or used in a situation where reference stability matters, you may be adding complexity without meaningful benefit.
+
+---
+
+# 25. The three-way relationship
+
+Now put everything together.
+
+### Problem
+
+```text
+Parent rerenders
+      ↓
+new function created
+      ↓
+memoized Child sees changed prop
+      ↓
+Child rerenders
+```
+
+### Solution
+
+```text
+useCallback
+      ↓
+stable function reference
+      ↓
+React.memo
+      ↓
+props remain equal
+      ↓
+Child bailout
+```
+
+So:
+
+```text
+useCallback
+    +
+React.memo
+    +
+stable dependencies
+    =
+potentially useful optimization
+```
+
+---
+
+# 26. `useMemo` vs `useCallback` — now at a deeper level
+
+| Hook | What it preserves | Main purpose |
+|---|---|---|
+| `useMemo` | Calculated value | Avoid expensive recalculation / stabilize value |
+| `useCallback` | Function reference | Stabilize function identity |
+| `React.memo` | Component rendering work | Bail out when props are equivalent |
+
+Think:
+
+```text
+useMemo
+   ↓
+"Remember this VALUE."
+
+useCallback
+   ↓
+"Remember this FUNCTION."
+
+React.memo
+   ↓
+"Can I skip this COMPONENT'S rendering work?"
+```
+
+---
+
+# 27. The deeper React optimization chain
+
+At this point you should be able to mentally trace this:
+
+```text
+State update
+     ↓
+Parent renders
+     ↓
+Inline object/function recreated
+     ↓
+Reference changes
+     ↓
+Child prop considered changed
+     ↓
+React.memo cannot bail out
+     ↓
+Child renders
+```
+
+Optimization:
+
+```text
+State update
+     ↓
+Parent renders
+     ↓
+useMemo/useCallback
+     ↓
+Stable reference
+     ↓
+Child receives equivalent props
+     ↓
+React.memo
+     ↓
+Bailout
+     ↓
+Less rendering work
+```
+
+That's the **real reason** these APIs are connected.
+
+---
+
+# 28. One thing I want you to remember permanently
+
+Don't ask:
+
+> "Should I use `useCallback`?"
+
+Ask:
+
+> **"Does the identity of this function matter?"**
+
+If the answer is no, you probably don't need it.
+
+If the function is:
+
+- passed to a `React.memo` child,
+- used as a dependency where stable identity matters,
+- passed to a subscription system,
+- otherwise compared by reference,
+
+then `useCallback` may be useful.
+
+---
+
+# 29. Interview answer 🎯
+
+If the interviewer asks:
+
+### "Why do we use useCallback?"
+
+A strong answer is:
+
+> "`useCallback` memoizes a function reference between renders based on its dependencies. This is useful when function identity matters, especially when passing callbacks to memoized child components or using them as dependencies. Without `useCallback`, a function defined inside a component is recreated on every render, producing a new reference. `useCallback` allows React to reuse the previous function until its dependencies change. However, it doesn't make the function execute faster, and using it everywhere can add unnecessary complexity and overhead."
+
+---
+
+# 30. Your optimization foundation is now strong
+
+You now understand:
+
+```text
+Part 1
+Rendering vs DOM updates
+        ↓
+Part 2
+Render phase / Commit phase / Fiber
+        ↓
+Part 3
+Why components rerender
+        ↓
+Part 4
+Referential equality
+        ↓
+Part 5
+React.memo
+        ↓
+Part 6
+useMemo
+        ↓
+Part 7
+useCallback
+```
+
+And these aren't separate topics anymore.
+
+They're one system:
+
+```text
+                 REACT PERFORMANCE
+                        │
+                        ↓
+                 Avoid unnecessary work
+                        │
+          ┌─────────────┼─────────────┐
+          ↓             ↓             ↓
+      React.memo     useMemo      useCallback
+          │             │             │
+          ↓             ↓             ↓
+       Bailout      Cache value    Stable function
+          │             │             │
+          └─────────────┼─────────────┘
+                        ↓
+               Referential equality
+                        ↓
+                 Less React work
+```
+
+### Next: Part 8 — **State Optimization & State Colocation**
+
+This is actually **more important than `useMemo`/`useCallback`** in real applications.
+
+We'll go deeply into:
+
+- Why state placement affects rendering
+- State update propagation
+- Parent state vs child state
+- State colocation
+- Lifting state up vs lifting state too far
+- Splitting state
+- Derived state
+- Why unnecessary state causes unnecessary renders
+- Component boundaries as optimization boundaries
+- A real large-app example showing how moving **one `useState`** can dramatically reduce rendering work.
