@@ -1,4 +1,4 @@
-Absolutely. We’ll learn **React Optimization from the inside**, not just memorize techniques.
+We’ll learn **React Optimization from the inside**, not just memorize techniques.
 
 I’ll teach you like an experienced React engineer: **what happens internally → why the problem occurs → how React handles it → optimization technique → code → how to identify it in DevTools → interview explanation.**
 
