@@ -14105,7 +14105,7 @@ When you have a slow API-driven page, think in this order:
         ↓
 5. Can independent requests run in parallel?
         ↓
-6. Can I reduce response size?
+6. Can I reduce response size ?
         ↓
 7. Can I paginate?
         ↓
