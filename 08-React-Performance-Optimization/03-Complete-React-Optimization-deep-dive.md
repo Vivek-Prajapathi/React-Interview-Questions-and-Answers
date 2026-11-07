@@ -14314,4 +14314,4 @@ So far, we've learned how to optimize **three major sources of work**:
 
 > **React optimization → control how much rendering work happens.**
 
-The next major section is **Part 13 — Code Splitting & Bundle Optimization**, where we'll go inside **JavaScript bundles, `React.lazy`, `Suspense`, dynamic imports, tree shaking, chunking, route-based splitting, and why downloading less JavaScript can dramatically improve initial load performance.**
+The next major section is **Part 13 — Code Splitting & Bundle Optimization**, where we'll go inside **JavaScript bundles, `React.lazy`, `Suspense`, dynamic imports, tree shaking, chunking, route-based splitting, and why downloading less JavaScript can dramatically improve initial loading performance.**
