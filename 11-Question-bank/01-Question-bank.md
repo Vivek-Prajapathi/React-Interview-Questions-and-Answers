@@ -2069,3 +2069,1075 @@ Object.is
 # 🎯 30-Second Interview Summary
 
 > "When a React component renders, React executes the component to calculate the next UI. React internally tracks this work using Fiber. When state or props change, React schedules an update and performs the render phase, where it calculates and reconciles the new UI with the previous one. React then enters the commit phase and applies only the necessary changes to the DOM. Keys help React preserve component identity, especially in lists. So an important distinction is that a re-render doesn't necessarily mean a DOM update; rendering is the calculation, while committing is when the actual UI changes are applied."
+
+
+# React Interview Questions — JSX
+
+## Clickable Question List
+
+1. [What is JSX?](#1-what-is-jsx)
+2. [Why do we use JSX in React?](#2-why-do-we-use-jsx-in-react)
+3. [Is JSX HTML?](#3-is-jsx-html)
+4. [How does JSX get converted into JavaScript?](#4-how-does-jsx-get-converted-into-javascript)
+5. [What is `React.createElement()`?](#5-what-is-reactcreateelement)
+6. [What is the difference between JSX and `React.createElement()`?](#6-what-is-the-difference-between-jsx-and-reactcreateelement)
+7. [What happens when JSX is compiled?](#7-what-happens-when-jsx-is-compiled)
+8. [Can browsers understand JSX directly?](#8-can-browsers-understand-jsx-directly)
+9. [How do JavaScript expressions work inside JSX?](#9-how-do-javascript-expressions-work-inside-jsx)
+10. [What is the difference between `{}` in JSX and normal JavaScript?](#10-what-is-the-difference-between--in-jsx-and-normal-javascript)
+11. [Why do we use `className` instead of `class`?](#11-why-do-we-use-classname-instead-of-class)
+12. [Why do we use `htmlFor` instead of `for`?](#12-why-do-we-use-htmlfor-instead-of-for)
+13. [What is the difference between JSX attributes and HTML attributes?](#13-what-is-the-difference-between-jsx-attributes-and-html-attributes)
+14. [How do you render a JavaScript variable in JSX?](#14-how-do-you-render-a-javascript-variable-in-jsx)
+15. [How do you write conditions in JSX?](#15-how-do-you-write-conditions-in-jsx)
+16. [How do you render lists in JSX?](#16-how-do-you-render-lists-in-jsx)
+17. [Why do lists need keys?](#17-why-do-lists-need-keys)
+18. [What is the `children` prop in JSX?](#18-what-is-the-children-prop-in-jsx)
+19. [Can JSX return multiple elements?](#19-can-jsx-return-multiple-elements)
+20. [Why do we use React Fragments?](#20-why-do-we-use-react-fragments)
+21. [How do you write comments in JSX?](#21-how-do-you-write-comments-in-jsx)
+22. [Can a React component return `null`, strings, numbers, or arrays?](#22-can-a-react-component-return-null-strings-numbers-or-arrays)
+23. [What are common JSX mistakes?](#23-what-are-common-jsx-mistakes)
+24. [How would you explain JSX in an interview?](#24-how-would-you-explain-jsx-in-an-interview)
+
+---
+
+## 1. What is JSX?
+
+**Interview answer:**
+
+I would describe JSX as a syntax extension for JavaScript that React uses to let us write UI-like markup directly inside JavaScript.
+
+For example:
+
+```jsx
+const element = <h1>Hello World</h1>;
+```
+
+This looks like HTML, but it is not actually HTML. JSX is JavaScript syntax that gets transformed into JavaScript before the browser runs it.
+
+The main benefit is that it makes React components easier to read because the UI structure and the JavaScript logic can be written together.
+
+---
+
+## 2. Why do we use JSX in React?
+
+JSX is not mandatory for React, but it makes writing React UI much easier and more readable.
+
+Without JSX, we would have to write something like:
+
+```js
+const element = React.createElement(
+  "h1",
+  null,
+  "Hello World"
+);
+```
+
+With JSX:
+
+```jsx
+const element = <h1>Hello World</h1>;
+```
+
+So I use JSX mainly because it gives me a declarative and readable way to describe what the UI should look like.
+
+It also allows me to directly embed JavaScript expressions inside the UI.
+
+Example:
+
+```jsx
+const name = "Nikitha";
+
+return <h1>Hello {name}</h1>;
+```
+
+---
+
+## 3. Is JSX HTML?
+
+No. JSX is **not HTML**.
+
+It looks similar to HTML, but it is a JavaScript syntax extension.
+
+For example:
+
+```jsx
+<button onClick={handleClick}>
+  Click Me
+</button>
+```
+
+`onClick` is not written like a traditional HTML event attribute. It follows JavaScript/React conventions.
+
+JSX is eventually transformed into JavaScript, which React uses to create and update the UI.
+
+### Interview trap
+
+Do not say:
+
+> JSX is HTML inside JavaScript.
+
+A better answer is:
+
+> JSX is JavaScript syntax that looks similar to HTML and is used to describe React UI.
+
+---
+
+## 4. How does JSX get converted into JavaScript?
+
+JSX is transformed by a compiler or build tool such as Babel, SWC, or the TypeScript compiler.
+
+For example:
+
+```jsx
+const element = <h1>Hello</h1>;
+```
+
+With the modern automatic JSX runtime, it can be transformed conceptually into something like:
+
+```js
+import { jsx as _jsx } from "react/jsx-runtime";
+
+const element = _jsx("h1", {
+  children: "Hello"
+});
+```
+
+With the older/classic JSX transform, the equivalent was:
+
+```js
+const element = React.createElement(
+  "h1",
+  null,
+  "Hello"
+);
+```
+
+So the important point is:
+
+**JSX → compiler transformation → JavaScript → React uses the resulting React element description to render the UI.**
+
+---
+
+## 5. What is `React.createElement()`?
+
+`React.createElement()` is a React API that creates a React element description.
+
+Example:
+
+```js
+const element = React.createElement(
+  "h1",
+  { className: "title" },
+  "Hello"
+);
+```
+
+This is conceptually equivalent to:
+
+```jsx
+const element = (
+  <h1 className="title">
+    Hello
+  </h1>
+);
+```
+
+The result is an object describing what React should render.
+
+### Important
+
+`React.createElement()` does **not** directly create a DOM element like:
+
+```js
+document.createElement("h1");
+```
+
+`document.createElement()` creates a real browser DOM node.
+
+`React.createElement()` creates a React element description.
+
+---
+
+## 6. What is the difference between JSX and `React.createElement()`?
+
+The main difference is syntax and how we express the UI.
+
+JSX:
+
+```jsx
+const element = (
+  <button className="btn">
+    Login
+  </button>
+);
+```
+
+Equivalent classic JavaScript:
+
+```js
+const element = React.createElement(
+  "button",
+  { className: "btn" },
+  "Login"
+);
+```
+
+JSX is easier for humans to read and write.
+
+`React.createElement()` is the underlying style associated with the classic JSX transform.
+
+### Interview answer
+
+> JSX is a developer-friendly syntax for describing React elements, while `React.createElement()` is a JavaScript API that creates the corresponding React element object. Modern React projects generally use the automatic JSX runtime, so JSX does not necessarily compile directly to `React.createElement()` anymore.
+
+---
+
+## 7. What happens when JSX is compiled?
+
+Consider:
+
+```jsx
+function App() {
+  return <h1>Hello {name}</h1>;
+}
+```
+
+The JSX is first transformed into JavaScript.
+
+Conceptually, the result represents something like:
+
+```js
+jsx("h1", {
+  children: ["Hello ", name]
+});
+```
+
+React receives this element description and uses it during rendering.
+
+The important flow is:
+
+```text
+JSX
+  ↓
+Compiler / build tool
+  ↓
+JavaScript
+  ↓
+React element description
+  ↓
+React rendering
+  ↓
+DOM updates
+```
+
+The browser ultimately executes JavaScript, not JSX.
+
+---
+
+## 8. Can browsers understand JSX directly?
+
+No.
+
+Browsers understand JavaScript, HTML, and CSS, but they do not natively understand JSX syntax.
+
+For example, this is not valid browser JavaScript:
+
+```jsx
+const element = <h1>Hello</h1>;
+```
+
+A build tool transforms it into JavaScript first.
+
+For example:
+
+```text
+.jsx file
+   ↓
+Vite / Babel / SWC / TypeScript
+   ↓
+JavaScript
+   ↓
+Browser
+```
+
+That is why JSX can be used in modern React applications even though browsers do not directly execute JSX.
+
+---
+
+## 9. How do JavaScript expressions work inside JSX?
+
+JSX allows JavaScript **expressions** inside curly braces `{}`.
+
+Example:
+
+```jsx
+const name = "Nikitha";
+const age = 21;
+
+return (
+  <div>
+    <h1>{name}</h1>
+    <p>Age: {age}</p>
+  </div>
+);
+```
+
+We can also use expressions such as:
+
+```jsx
+<p>{10 + 20}</p>
+```
+
+```jsx
+<p>{name.toUpperCase()}</p>
+```
+
+```jsx
+<p>{isLoggedIn ? "Welcome" : "Please login"}</p>
+```
+
+### Important distinction
+
+JSX supports expressions inside `{}`.
+
+An expression produces a value.
+
+A statement such as a normal `if` statement cannot directly be placed inside JSX:
+
+```jsx
+// ❌ Not valid
+<div>
+  {if (isLoggedIn) {
+    return "Welcome";
+  }}
+</div>
+```
+
+Instead, we can use a ternary:
+
+```jsx
+<div>
+  {isLoggedIn ? "Welcome" : "Please login"}
+</div>
+```
+
+---
+
+## 10. What is the difference between `{}` in JSX and normal JavaScript?
+
+Inside JSX, `{}` means:
+
+> "Evaluate the JavaScript expression inside these braces and insert its result here."
+
+Example:
+
+```jsx
+const name = "Nikitha";
+
+return <h1>Hello {name}</h1>;
+```
+
+Here:
+
+```jsx
+{name}
+```
+
+means React should evaluate the JavaScript variable `name` and render its value.
+
+Outside JSX, braces can have completely different meanings.
+
+For example:
+
+```js
+const user = {
+  name: "Nikitha"
+};
+```
+
+Here `{}` defines an object.
+
+So the meaning of `{}` depends on the context.
+
+---
+
+## 11. Why do we use `className` instead of `class`?
+
+In JSX, we normally use:
+
+```jsx
+<div className="container">
+  Hello
+</div>
+```
+
+instead of:
+
+```jsx
+<div class="container">
+  Hello
+</div>
+```
+
+The reason is that JSX uses JavaScript property naming conventions, and `class` conflicts with the JavaScript `class` keyword.
+
+React therefore uses the DOM property name:
+
+```jsx
+className
+```
+
+### Example
+
+```jsx
+function App() {
+  return (
+    <div className="container">
+      <h1>Hello</h1>
+    </div>
+  );
+}
+```
+
+---
+
+## 12. Why do we use `htmlFor` instead of `for`?
+
+For a `<label>`, JSX uses:
+
+```jsx
+<label htmlFor="email">
+  Email
+</label>
+
+<input id="email" />
+```
+
+instead of:
+
+```html
+<label for="email">
+```
+
+The reason is similar to `className`: JSX follows JavaScript/DOM property conventions.
+
+`htmlFor` corresponds to the HTML `for` attribute.
+
+### Common JSX naming examples
+
+```jsx
+className
+htmlFor
+tabIndex
+readOnly
+onClick
+onChange
+```
+
+---
+
+## 13. What is the difference between JSX attributes and HTML attributes?
+
+JSX attributes look similar to HTML attributes, but they follow React and JavaScript conventions.
+
+HTML:
+
+```html
+<button onclick="handleClick()">
+```
+
+JSX:
+
+```jsx
+<button onClick={handleClick}>
+```
+
+Another example:
+
+HTML:
+
+```html
+<div class="box"></div>
+```
+
+JSX:
+
+```jsx
+<div className="box"></div>
+```
+
+JSX also allows JavaScript expressions as values:
+
+```jsx
+<button disabled={isDisabled}>
+  Submit
+</button>
+```
+
+Here `isDisabled` is evaluated as JavaScript.
+
+---
+
+## 14. How do you render a JavaScript variable in JSX?
+
+We use curly braces.
+
+```jsx
+const name = "Nikitha";
+
+function App() {
+  return <h1>Hello {name}</h1>;
+}
+```
+
+We can also access object properties:
+
+```jsx
+const user = {
+  name: "Nikitha",
+  age: 21
+};
+
+return (
+  <div>
+    <p>{user.name}</p>
+    <p>{user.age}</p>
+  </div>
+);
+```
+
+The `{}` tells JSX that we are switching from JSX syntax into JavaScript expression syntax.
+
+---
+
+## 15. How do you write conditions in JSX?
+
+There are several common approaches.
+
+### Ternary operator
+
+```jsx
+return (
+  <div>
+    {isLoggedIn ? <Dashboard /> : <Login />}
+  </div>
+);
+```
+
+### Logical AND
+
+```jsx
+return (
+  <div>
+    {isAdmin && <AdminPanel />}
+  </div>
+);
+```
+
+### Calculate before returning JSX
+
+```jsx
+let content;
+
+if (isLoggedIn) {
+  content = <Dashboard />;
+} else {
+  content = <Login />;
+}
+
+return <div>{content}</div>;
+```
+
+A normal `if` statement cannot be directly inserted inside JSX.
+
+---
+
+## 16. How do you render lists in JSX?
+
+We commonly use JavaScript's `map()` method.
+
+Example:
+
+```jsx
+const users = ["A", "B", "C"];
+
+return (
+  <ul>
+    {users.map(user => (
+      <li key={user}>{user}</li>
+    ))}
+  </ul>
+);
+```
+
+`map()` creates a React element for each item.
+
+This is one of the most common patterns for rendering dynamic UI.
+
+---
+
+## 17. Why do lists need keys?
+
+Keys help React identify which item in a list corresponds to which rendered element.
+
+Example:
+
+```jsx
+users.map(user => (
+  <li key={user.id}>
+    {user.name}
+  </li>
+));
+```
+
+React uses the key during reconciliation to determine whether an item:
+
+- stayed the same
+- was added
+- was removed
+- moved
+- changed
+
+A stable key helps React make the correct and efficient update.
+
+### Good key
+
+```jsx
+key={user.id}
+```
+
+### Bad key when the list can change
+
+```jsx
+key={index}
+```
+
+---
+
+## 18. What is the `children` prop in JSX?
+
+Anything placed between the opening and closing tags of a component becomes available through the `children` prop.
+
+Example:
+
+```jsx
+<Card>
+  <h2>Hello</h2>
+  <p>Welcome</p>
+</Card>
+```
+
+Inside `Card`:
+
+```jsx
+function Card({ children }) {
+  return (
+    <div className="card">
+      {children}
+    </div>
+  );
+}
+```
+
+So `children` allows a component to act as a reusable wrapper around different content.
+
+This is a major part of component composition.
+
+---
+
+## 19. Can JSX return multiple elements?
+
+A component cannot return multiple sibling elements as separate values like this:
+
+```jsx
+// ❌ Invalid
+return (
+  <h1>Hello</h1>
+  <p>Welcome</p>
+);
+```
+
+They need a common parent.
+
+We can use a `<div>`:
+
+```jsx
+return (
+  <div>
+    <h1>Hello</h1>
+    <p>Welcome</p>
+  </div>
+);
+```
+
+Or a Fragment:
+
+```jsx
+return (
+  <>
+    <h1>Hello</h1>
+    <p>Welcome</p>
+  </>
+);
+```
+
+---
+
+## 20. Why do we use React Fragments?
+
+Fragments allow us to group multiple elements without adding an extra DOM element.
+
+Example:
+
+```jsx
+return (
+  <>
+    <h1>Hello</h1>
+    <p>Welcome</p>
+  </>
+);
+```
+
+The Fragment itself does not create a DOM node.
+
+This is useful when adding an extra `<div>` would affect layout, styling, semantics, or DOM structure.
+
+We can also use:
+
+```jsx
+<React.Fragment>
+  <h1>Hello</h1>
+  <p>Welcome</p>
+</React.Fragment>
+```
+
+The short syntax is:
+
+```jsx
+<>
+  ...
+</>
+```
+
+---
+
+## 21. How do you write comments in JSX?
+
+JavaScript comments such as:
+
+```jsx
+// comment
+```
+
+cannot be directly placed between JSX elements.
+
+Inside JSX, we use:
+
+```jsx
+{/* This is a JSX comment */}
+```
+
+Example:
+
+```jsx
+return (
+  <div>
+    {/* Display the user's name */}
+    <h1>{name}</h1>
+  </div>
+);
+```
+
+Outside JSX, normal JavaScript comments work:
+
+```jsx
+// Component for displaying user details
+function User() {
+  return <h1>User</h1>;
+}
+```
+
+---
+
+## 22. Can a React component return `null`, strings, numbers, or arrays?
+
+Yes. React can render several types of values.
+
+### `null`
+
+```jsx
+return null;
+```
+
+This means the component renders nothing.
+
+### String
+
+```jsx
+return "Hello";
+```
+
+### Number
+
+```jsx
+return 100;
+```
+
+### Array
+
+```jsx
+return [
+  <h1 key="title">Hello</h1>,
+  <p key="text">Welcome</p>
+];
+```
+
+However, when returning arrays of elements, those elements should have stable keys.
+
+React also ignores some non-renderable values such as `false`, `true`, and `undefined` when they appear as children.
+
+---
+
+## 23. What are common JSX mistakes?
+
+### Mistake 1: Using `class`
+
+```jsx
+// ❌
+<div class="box">
+```
+
+Use:
+
+```jsx
+<div className="box">
+```
+
+### Mistake 2: Forgetting to close elements
+
+```jsx
+// ❌
+<img src="image.png">
+```
+
+Use:
+
+```jsx
+<img src="image.png" />
+```
+
+### Mistake 3: Putting a statement directly inside JSX
+
+```jsx
+// ❌
+<div>{if (loggedIn) { ... }}</div>
+```
+
+Use a ternary or calculate the value before JSX.
+
+### Mistake 4: Forgetting keys in lists
+
+```jsx
+// ❌
+users.map(user => <li>{user.name}</li>)
+```
+
+Use:
+
+```jsx
+users.map(user => (
+  <li key={user.id}>{user.name}</li>
+))
+```
+
+### Mistake 5: Using strings for JavaScript variables
+
+```jsx
+// ❌
+<h1>"name"</h1>
+```
+
+This renders the literal text `"name"`.
+
+Use:
+
+```jsx
+<h1>{name}</h1>
+```
+
+---
+
+## 24. How would you explain JSX in an interview?
+
+### Strong interview answer
+
+> JSX is a syntax extension for JavaScript that React uses to describe the UI in a readable way. It looks similar to HTML, but it is not HTML. JSX allows me to write markup-like syntax directly inside JavaScript and embed JavaScript expressions using curly braces.
+>
+> JSX itself is not understood directly by the browser. During the build process, tools such as Babel, SWC, or TypeScript transform JSX into JavaScript. With modern React, JSX generally uses the automatic JSX runtime, which produces calls to functions from `react/jsx-runtime`; older transforms commonly used `React.createElement()`.
+>
+> The resulting JavaScript creates React element descriptions, which React then uses during rendering and reconciliation to update the actual DOM.
+
+---
+
+# Follow-up Questions Interviewers May Ask
+
+## Why can't we write `if` directly inside JSX?
+
+Because JSX expressions accept expressions, while a normal `if` is a statement.
+
+Use:
+
+```jsx
+{isLoggedIn ? <Dashboard /> : <Login />}
+```
+
+or calculate the result before returning JSX.
+
+---
+
+## Does JSX improve performance?
+
+Not directly.
+
+JSX mainly improves developer experience and readability. The compiler transforms it into JavaScript, and React handles rendering and updates.
+
+Performance depends on the resulting React tree, rendering behavior, reconciliation, DOM work, memoization, state design, and other factors.
+
+---
+
+## Is JSX required to use React?
+
+No.
+
+React can be used without JSX:
+
+```js
+const element = React.createElement(
+  "h1",
+  null,
+  "Hello"
+);
+```
+
+However, JSX is generally preferred because it is much easier to read and maintain.
+
+---
+
+## Does JSX create DOM elements?
+
+Not directly.
+
+JSX is transformed into JavaScript that describes React elements.
+
+React later uses those descriptions during rendering to create or update the actual DOM when working with a DOM renderer.
+
+---
+
+# Interview Traps
+
+### Trap 1
+
+**Question:** Is JSX HTML?
+
+**Wrong:**
+
+> Yes, JSX is HTML.
+
+**Correct:**
+
+> No. JSX is JavaScript syntax that looks similar to HTML.
+
+---
+
+### Trap 2
+
+**Question:** Does JSX always compile to `React.createElement()`?
+
+**Wrong:**
+
+> Yes, JSX always becomes `React.createElement()`.
+
+**Correct:**
+
+> Older/classic transforms commonly used `React.createElement()`, but modern React uses an automatic JSX runtime that generally emits calls to `react/jsx-runtime`.
+
+---
+
+### Trap 3
+
+**Question:** Can the browser execute JSX?
+
+**Wrong:**
+
+> Yes, browsers understand JSX.
+
+**Correct:**
+
+> No. JSX must be transformed into JavaScript before the browser executes it.
+
+---
+
+### Trap 4
+
+**Question:** Why use `{}` in JSX?
+
+**Correct:**
+
+> Curly braces allow us to evaluate JavaScript expressions inside JSX.
+
+---
+
+### Trap 5
+
+**Question:** Can we put an `if` statement inside `{}`?
+
+**Correct:**
+
+> No, not directly. JSX accepts expressions, so we commonly use a ternary, logical operators, or calculate the value before returning JSX.
+
+---
+
+# Quick Revision
+
+```text
+JSX
+ ↓
+JavaScript syntax extension
+ ↓
+Looks like HTML but is NOT HTML
+ ↓
+Allows JavaScript expressions inside {}
+ ↓
+Transformed by compiler/build tool
+ ↓
+Modern React → automatic JSX runtime
+ ↓
+Older transform → React.createElement()
+ ↓
+React element description
+ ↓
+React rendering/reconciliation
+ ↓
+DOM updates
+```
+
+### Remember
+
+- JSX is not HTML.
+- JSX is not mandatory.
+- Browsers do not understand JSX directly.
+- `{}` lets us use JavaScript expressions.
+- JSX uses `className`, not `class`.
+- JSX uses `htmlFor`, not `for`.
+- Lists normally need stable keys.
+- `children` comes from content placed inside a component.
+- Fragments group elements without adding an extra DOM node.
+- Modern React generally uses the automatic JSX runtime.
+
+---
+
+# 30-Second Interview Summary
+
+> JSX is a JavaScript syntax extension used in React to describe UI in a readable, HTML-like way. It is not HTML and browsers cannot execute it directly. During the build process, JSX is transformed into JavaScript, usually using the modern automatic JSX runtime. JSX also lets us embed JavaScript expressions inside `{}`. It makes React components easier to write and understand while still giving us the full power of JavaScript.
