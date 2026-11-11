@@ -675,35 +675,11 @@ useLocalStorage()
 
 **Interview Answer:**
 
-`useState` works through React's internal Hook system. React stores the state of a component inside its Fiber and keeps track of each Hook based on the order in which the Hooks are called.
+React maintains internal data associated with each component's rendering process.
 
-When the component renders for the first time, `useState` creates a Hook and stores the initial state value.
+When a component renders, React tracks Hook calls in their order and associates each call with the corresponding internal Hook data.
 
-When we call the setter function, for example `setCount(5)`, React does not immediately change the state. Instead, it creates an update and puts it into the Hook's update queue. React then schedules the component to re-render.
-
-During the next render, React processes the pending update, calculates the new state, stores it in the Hook, and returns the updated value to the component.
-
-For example:
-
-```jsx
-const [count, setCount] = useState(0);
-```
-
-Initially, React stores `count` as `0`.
-
-If I call:
-
-```jsx
-setCount(5);
-```
-
-React queues this update and schedules a re-render. During that render, React processes the queued update, changes the stored state from `0` to `5`, and then `useState` gives me `5` as the current state.
-
-So the important point is that the setter **queues an update and triggers a re-render** rather than simply changing the state variable immediately.
-
-So the overall flow is:
-
-**Initial state → Setter called → Update queued → Re-render → Update processed → New state returned.**a.
+During subsequent renders, React uses the same call order to retrieve and update the correct Hook data.
 
 **Simplified Flow:**
 
@@ -837,13 +813,32 @@ Here:
 
 **Interview Answer:**
 
-React associates state with a component's identity and its Hook call position.
+`useState` works through React's internal Hook system. React stores the state of a component inside its Fiber and keeps track of each Hook based on the order in which the Hooks are called.
 
-When a component initially renders, React initializes its state.
+When the component renders for the first time, `useState` creates a Hook and stores the initial state value.
 
-When the setter is called, React queues an update and schedules the component to render again.
+When we call the setter function, for example `setCount(5)`, React does not immediately change the state. Instead, it creates an update and puts it into the Hook's update queue. React then schedules the component to re-render.
 
-During the next render, React provides the updated state value.
+During the next render, React processes the pending update, calculates the new state, stores it in the Hook, and returns the updated value to the component.
+
+For example:
+
+```jsx
+const [count, setCount] = useState(0);
+```
+
+Initially, React stores `count` as `0`.
+
+If I call:
+
+```jsx
+setCount(5);
+```
+
+React queues this update and schedules a re-render. During that render, React processes the queued update, changes the stored state from `0` to `5`, and then `useState` gives me `5` as the current state.
+
+So the important point is that the setter **queues an update and triggers a re-render** rather than simply changing the state variable immediately.
+
 
 **Flow:**
 
