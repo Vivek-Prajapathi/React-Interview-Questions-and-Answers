@@ -1150,3 +1150,922 @@ Preserve State
 > When state or props change, React renders a new UI representation and uses reconciliation to compare it with the previous one. It then commits the necessary changes to the host environment, such as the browser DOM.
 >
 > React also provides features such as JSX, Hooks, one-way data flow, component composition, and keys for maintaining identity during reconciliation.
+
+
+# React Rendering, Reconciliation & Internals — Interview Questions & Answers
+
+This chapter focuses on **how React actually works internally**. The answers are written in a way that you can explain them naturally in an interview instead of giving only definitions.
+
+---
+
+# 📌 Questions
+
+1. [What happens when a React component renders?](#1-what-happens-when-a-react-component-renders)
+2. [What is rendering in React?](#2-what-is-rendering-in-react)
+3. [Does rendering mean React directly updates the DOM?](#3-does-rendering-mean-react-directly-updates-the-dom)
+4. [What is the Virtual DOM?](#4-what-is-the-virtual-dom)
+5. [Why does React use an internal representation of the UI?](#5-why-does-react-use-an-internal-representation-of-the-ui)
+6. [What is reconciliation in React?](#6-what-is-reconciliation-in-react)
+7. [How does React compare the old and new UI?](#7-how-does-react-compare-the-old-and-new-ui)
+8. [What is React Fiber?](#8-what-is-react-fiber)
+9. [Why was Fiber introduced?](#9-why-was-fiber-introduced)
+10. [What is a Fiber node?](#10-what-is-a-fiber-node)
+11. [What causes a component to re-render?](#11-what-causes-a-component-to-re-render)
+12. [Does a parent re-render cause its children to re-render?](#12-does-a-parent-re-render-cause-its-children-to-re-render)
+13. [Does a re-render mean the DOM is updated?](#13-does-a-re-render-mean-the-dom-is-updated)
+14. [How does React update the DOM efficiently?](#14-how-does-react-update-the-dom-efficiently)
+15. [What is the difference between render phase and commit phase?](#15-what-is-the-difference-between-render-phase-and-commit-phase)
+16. [What is batching in React?](#16-what-is-batching-in-react)
+17. [Why doesn't React immediately update state?](#17-why-doesnt-react-immediately-update-state)
+18. [What is the difference between an event handler and a render?](#18-what-is-the-difference-between-an-event-handler-and-a-render)
+19. [How does React preserve component state between renders?](#19-how-does-react-preserve-component-state-between-renders)
+20. [How do keys affect component identity?](#20-how-do-keys-affect-component-identity)
+21. [What happens when a key changes?](#21-what-happens-when-a-key-changes)
+22. [What is Strict Mode and why does React render components twice in development?](#22-what-is-strict-mode-and-why-does-react-render-components-twice-in-development)
+23. [What is Object.is and where is it relevant in React?](#23-what-is-objectis-and-where-is-it-relevant-in-react)
+24. [What is the complete React rendering flow?](#24-what-is-the-complete-react-rendering-flow)
+25. [Give an interview-ready explanation of React's rendering architecture.](#25-give-an-interview-ready-explanation-of-reacts-rendering-architecture)
+
+---
+
+# Questions & Answers
+
+## 1. What happens when a React component renders?
+
+### Interview Answer
+
+When a React component renders, React first **calls the component function** to figure out what the UI should look like for the current props and state.
+
+The component returns React elements, which describe the desired UI. React then uses its internal representation and reconciliation process to compare the new result with the previous one.
+
+If something actually changed, React prepares the required DOM updates and applies them during the **commit phase**.
+
+So I would describe the flow as:
+
+**Component function → React elements → reconciliation → commit → DOM update**
+
+An important point is that **rendering itself does not mean the DOM is immediately changed**. Rendering is mainly React calculating what the UI should be.
+
+---
+
+## 2. What is rendering in React?
+
+### Interview Answer
+
+Rendering in React means **React calls a component to determine what the UI should look like based on its current props and state**.
+
+For example:
+
+```jsx
+function Counter({ count }) {
+  return <h1>{count}</h1>;
+}
+```
+
+If `count` changes from `1` to `2`, React renders the component again and gets:
+
+```jsx
+<h1>2</h1>
+```
+
+React then compares this result with the previous result and determines whether the actual DOM needs to change.
+
+So rendering is basically the **calculation of the next UI**, not necessarily a DOM update.
+
+---
+
+## 3. Does rendering mean React directly updates the DOM?
+
+### Interview Answer
+
+No.
+
+This is a very important distinction.
+
+When React renders a component, it calculates what the next UI should look like. React then compares that result with the previous UI representation during reconciliation.
+
+Only after React determines what actually needs to change does it apply those changes to the real DOM during the commit phase.
+
+So:
+
+```text
+Render
+  ↓
+Calculate next UI
+  ↓
+Reconciliation
+  ↓
+Determine changes
+  ↓
+Commit
+  ↓
+Update DOM
+```
+
+This is why saying **"every re-render directly updates the DOM"** is incorrect.
+
+---
+
+## 4. What is the Virtual DOM?
+
+### Interview Answer
+
+The Virtual DOM is a conceptual way of describing React's representation of the UI before React applies changes to the actual DOM.
+
+Instead of manually telling the browser:
+
+```javascript
+element.textContent = "Hello";
+element.style.color = "red";
+```
+
+we describe the UI using React components and elements.
+
+For example:
+
+```jsx
+<h1>Hello</h1>
+```
+
+React can compare the previous and next UI descriptions and determine what needs to change in the actual DOM.
+
+The important thing is that **Virtual DOM is not a copy of the entire browser DOM sitting somewhere that React blindly updates**. Modern React's architecture is more accurately described in terms of **React elements, Fiber nodes, reconciliation, and the commit phase**.
+
+---
+
+## 5. Why does React use an internal representation of the UI?
+
+### Interview Answer
+
+The main reason is that React wants to separate **describing the UI** from **actually applying changes to the UI**.
+
+When application state changes, React can calculate the next UI, compare it with the previous one, and determine the smallest set of necessary changes.
+
+This gives React a structured way to manage complex UI updates.
+
+It also allows React's rendering system to support features such as scheduling, prioritization, interruption of rendering work, and different rendering environments.
+
+---
+
+## 6. What is reconciliation in React?
+
+### Interview Answer
+
+Reconciliation is the process React uses to **compare the previous rendered UI with the new rendered UI and determine what needs to change**.
+
+For example, suppose the previous result is:
+
+```jsx
+<h1>Hello</h1>
+```
+
+and the new result is:
+
+```jsx
+<h1>Hello World</h1>
+```
+
+React doesn't need to recreate the entire page. It identifies that the text inside the `h1` changed and updates the necessary part.
+
+Keys are also important during reconciliation because they help React identify which list items represent the same logical component between renders.
+
+---
+
+## 7. How does React compare the old and new UI?
+
+### Interview Answer
+
+React uses the structure and identity of elements to determine what can be reused and what needs to change.
+
+For example, if the element type stays the same:
+
+```jsx
+<div>Hello</div>
+```
+
+becomes:
+
+```jsx
+<div>Hi</div>
+```
+
+React can keep the existing DOM node and update its content.
+
+But if the type changes:
+
+```jsx
+<div>Hello</div>
+```
+
+becomes:
+
+```jsx
+<section>Hello</section>
+```
+
+React treats that as a different element type and may replace the corresponding subtree.
+
+For lists, React uses `key` values to preserve identity between renders.
+
+So the major things React considers include:
+
+- Element type
+- Position in the tree
+- Key
+- Props and children
+- Component identity
+
+---
+
+## 8. What is React Fiber?
+
+### Interview Answer
+
+React Fiber is the internal architecture React uses to represent and manage rendering work.
+
+A Fiber is essentially a data structure that represents a unit of work associated with a component or element in the React tree.
+
+Fiber allows React to break rendering work into smaller units and gives React more control over how that work is scheduled.
+
+This architecture is especially important for features such as:
+
+- Prioritizing updates
+- Interrupting rendering work
+- Resuming work
+- Concurrent rendering
+- Tracking component state and relationships
+
+So when I say **Fiber**, I am referring both to the internal data structure and the architecture built around it.
+
+---
+
+## 9. Why was Fiber introduced?
+
+### Interview Answer
+
+Before Fiber, React's rendering work was more difficult to interrupt and prioritize.
+
+If React had a large amount of rendering work, that work could potentially occupy the JavaScript thread for too long.
+
+Fiber introduced a more flexible architecture where React can break rendering work into units and schedule it.
+
+This means React can decide which work is more important and, when appropriate, pause lower-priority rendering work and continue later.
+
+The main goal was to make React's rendering system more flexible and responsive, especially for complex applications.
+
+---
+
+## 10. What is a Fiber node?
+
+### Interview Answer
+
+A Fiber node is an internal JavaScript object that represents a unit in React's component tree.
+
+A Fiber can contain information such as:
+
+- Component type
+- Key
+- Props
+- State-related information
+- Parent relationship
+- Child relationship
+- Sibling relationship
+- Pending work
+- Effects or flags related to updates
+
+For example, conceptually the tree can look like:
+
+```text
+App Fiber
+   |
+   +-- Header Fiber
+   |
+   +-- Main Fiber
+   |     |
+   |     +-- Product Fiber
+   |     +-- Product Fiber
+   |
+   +-- Footer Fiber
+```
+
+Fiber gives React a structure that it can use to track and process rendering work.
+
+---
+
+## 11. What causes a component to re-render?
+
+### Interview Answer
+
+A component can re-render when React receives an update that affects that component.
+
+Common causes include:
+
+1. Its state changes.
+2. Its parent renders and React renders the child as part of that process.
+3. Its context value changes.
+4. An external store or subscription used by the component triggers an update.
+5. A component receives new props.
+
+For example:
+
+```jsx
+const [count, setCount] = useState(0);
+
+setCount(1);
+```
+
+The state update schedules React to render the component again.
+
+However, a re-render does **not automatically mean the DOM changes**. React still has to determine whether the resulting UI is different.
+
+---
+
+## 12. Does a parent re-render cause its children to re-render?
+
+### Interview Answer
+
+By default, when a parent component renders, React will generally render its child components as part of that rendering process.
+
+For example:
+
+```jsx
+function Parent() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <>
+      <button onClick={() => setCount(count + 1)}>
+        {count}
+      </button>
+
+      <Child />
+    </>
+  );
+}
+```
+
+When `Parent` renders again, `Child` can also be rendered again.
+
+However, React provides optimization techniques such as `memo` that can allow a child to skip rendering when its relevant inputs haven't changed.
+
+So I would not say **"parent re-render always causes DOM updates in children."**
+
+It can cause child rendering, but the DOM is updated only if React determines that an actual change is necessary.
+
+---
+
+## 13. Does a re-render mean the DOM is updated?
+
+### Interview Answer
+
+No.
+
+A re-render means React executes the rendering logic again and calculates the next UI.
+
+React then compares the new result with the previous result.
+
+If the output is effectively the same, React may not need to make any DOM changes.
+
+For example:
+
+```jsx
+function App() {
+  return <h1>Hello</h1>;
+}
+```
+
+Even if this component renders again, React doesn't need to recreate the `h1` DOM element just because the component function executed again.
+
+This distinction is important:
+
+**Re-render ≠ DOM update.**
+
+---
+
+## 14. How does React update the DOM efficiently?
+
+### Interview Answer
+
+React follows a process where it first calculates the next UI, then reconciles it with the previous UI, and finally commits the required changes.
+
+For example:
+
+```jsx
+<h1>Hello</h1>
+```
+
+changes to:
+
+```jsx
+<h1>Hello World</h1>
+```
+
+React can reuse the existing `h1` DOM node and update only the changed text.
+
+It doesn't need to remove and recreate the entire page.
+
+This is one reason React applications can manage complex dynamic interfaces without requiring developers to manually synchronize every DOM change.
+
+---
+
+## 15. What is the difference between render phase and commit phase?
+
+### Interview Answer
+
+React's update process can be understood in two major phases: the **render phase** and the **commit phase**.
+
+### Render phase
+
+During the render phase, React determines what the next UI should look like.
+
+It can:
+
+- Call components
+- Process hooks
+- Build or update Fiber work
+- Reconcile the new result with the previous one
+- Determine what changes are required
+
+The render phase should be treated as having no direct DOM side effects.
+
+### Commit phase
+
+In the commit phase, React applies the required changes to the host environment, such as the browser DOM.
+
+This is where React performs the actual DOM mutations and runs the appropriate commit-related effects.
+
+So the simple explanation is:
+
+```text
+Render phase
+    ↓
+"What should the UI look like?"
+
+Commit phase
+    ↓
+"Apply those changes."
+```
+
+---
+
+## 16. What is batching in React?
+
+### Interview Answer
+
+Batching means React can group multiple state updates together and process them as a single rendering update rather than rendering after every individual state update.
+
+For example:
+
+```jsx
+setCount(1);
+setName("Nikitha");
+```
+
+React can batch these updates so that the component doesn't need to go through separate rendering work for each update.
+
+Modern React also performs automatic batching for many updates beyond traditional React event handlers.
+
+The main benefit is reducing unnecessary rendering work and improving performance.
+
+---
+
+## 17. Why doesn't React immediately update state?
+
+### Interview Answer
+
+When I call a state setter such as:
+
+```jsx
+setCount(5);
+```
+
+I shouldn't think of it as directly changing the current `count` variable.
+
+Instead, I'm asking React to schedule an update.
+
+The current render continues using the state values that belong to that render.
+
+React then processes the update, renders the component with the new state, reconciles the result, and commits any required changes.
+
+That's why code like this can be surprising:
+
+```jsx
+console.log(count);
+setCount(count + 1);
+console.log(count);
+```
+
+Both logs can show the old value during that event handler.
+
+The new state becomes available in the next render.
+
+---
+
+## 18. What is the difference between an event handler and a render?
+
+### Interview Answer
+
+An event handler is code that runs in response to an event, such as a click.
+
+For example:
+
+```jsx
+<button onClick={handleClick}>Click</button>
+```
+
+The `handleClick` function runs because the user clicked the button.
+
+A render is different. A render happens when React executes the component to determine the UI for the current state and props.
+
+The flow can be:
+
+```text
+User clicks button
+       ↓
+Event handler runs
+       ↓
+setState()
+       ↓
+React schedules update
+       ↓
+Component renders
+       ↓
+Reconciliation
+       ↓
+Commit
+```
+
+So the event handler triggers the update, while rendering is React's process of calculating the next UI.
+
+---
+
+## 19. How does React preserve component state between renders?
+
+### Interview Answer
+
+React preserves state based on the **identity and position of a component in the rendered tree**.
+
+For example:
+
+```jsx
+function App() {
+  return <Counter />;
+}
+```
+
+If React continues to see the same `Counter` component in the same logical position, it can associate the existing state with that component.
+
+This is why state normally survives ordinary re-renders.
+
+However, if the component's identity changes, React can treat it as a new component and its state can be reset.
+
+Keys are especially important when dealing with lists because they help React identify which component instance corresponds to which item.
+
+---
+
+## 20. How do keys affect component identity?
+
+### Interview Answer
+
+Keys tell React which list item represents the same logical item between renders.
+
+For example:
+
+```jsx
+users.map(user => (
+  <User key={user.id} user={user} />
+))
+```
+
+Suppose the list changes from:
+
+```text
+A
+B
+C
+```
+
+to:
+
+```text
+C
+A
+B
+```
+
+If the keys are stable IDs, React can understand that these are the same three logical components, just in a different order.
+
+This helps React preserve the correct component identity and state.
+
+So I think of a key as an **identity marker for elements among their siblings**.
+
+---
+
+## 21. What happens when a key changes?
+
+### Interview Answer
+
+When a component's key changes, React can treat it as a different component identity.
+
+For example:
+
+```jsx
+<Profile key={userId} />
+```
+
+If:
+
+```text
+userId = 1
+```
+
+changes to:
+
+```text
+userId = 2
+```
+
+React can treat the new `Profile` as a new instance rather than continuing the previous instance.
+
+That means its local state can be reset.
+
+This behavior can actually be used intentionally.
+
+For example:
+
+```jsx
+<Form key={userId} />
+```
+
+Changing the key can force the form to start with fresh component state.
+
+So keys are not just about removing warnings; they can control component identity.
+
+---
+
+## 22. What is Strict Mode and why does React render components twice in development?
+
+### Interview Answer
+
+React Strict Mode is a development-time feature that helps identify unsafe patterns and potential bugs.
+
+In certain development configurations, React may intentionally invoke rendering-related logic more than once to expose code that incorrectly depends on side effects happening only once.
+
+For example:
+
+```jsx
+function App() {
+  console.log("render");
+  return <h1>Hello</h1>;
+}
+```
+
+You may see the log more than once in development when Strict Mode is enabled.
+
+This does not mean React is randomly rendering the application twice in production.
+
+The purpose is to help developers find problems such as:
+
+- Impure rendering
+- Missing cleanup
+- Incorrect side effects
+- Code that is not resilient to React's rendering behavior
+
+So if I see a double render during development, I first check whether Strict Mode is enabled.
+
+---
+
+## 23. What is Object.is and where is it relevant in React?
+
+### Interview Answer
+
+`Object.is` is a JavaScript comparison algorithm that React uses in several places where it needs to determine whether values are the same according to React's equality semantics.
+
+For example, React can use `Object.is` when deciding whether a state update represents a meaningful value change.
+
+It is also relevant when React compares dependency values for hooks such as:
+
+```jsx
+useEffect(() => {
+  // effect
+}, [value]);
+```
+
+React compares dependency values between renders using `Object.is` semantics.
+
+This is important for understanding why object and array dependencies can cause effects to run again when their references change.
+
+For example:
+
+```jsx
+const user = { name: "Nikitha" };
+```
+
+Creating a new object on every render gives it a new reference, even if the contents look identical.
+
+---
+
+## 24. What is the complete React rendering flow?
+
+### Interview Answer
+
+I would explain the complete flow like this:
+
+Suppose I have:
+
+```jsx
+const [count, setCount] = useState(0);
+
+<button onClick={() => setCount(count + 1)}>
+  {count}
+</button>
+```
+
+Initially, React renders the component with:
+
+```text
+count = 0
+```
+
+Then the user clicks the button.
+
+The event handler calls:
+
+```jsx
+setCount(count + 1);
+```
+
+React schedules an update.
+
+React then renders the component again with:
+
+```text
+count = 1
+```
+
+During the render process, React calculates the new UI and reconciles it with the previous UI.
+
+React identifies that the button's displayed text changed from:
+
+```text
+0
+```
+
+to:
+
+```text
+1
+```
+
+React then enters the commit phase and applies the required DOM update.
+
+The overall flow is:
+
+```text
+Initial render
+     ↓
+Component executes
+     ↓
+React creates/updates Fiber work
+     ↓
+UI is committed
+
+User interaction
+     ↓
+setState()
+     ↓
+Update scheduled
+     ↓
+Render phase
+     ↓
+Reconciliation
+     ↓
+Commit phase
+     ↓
+DOM updated
+```
+
+---
+
+## 25. Give an interview-ready explanation of React's rendering architecture.
+
+### Strong Interview Answer
+
+"React's rendering architecture is based on separating the calculation of the UI from actually applying changes to the DOM.
+
+When a component initially renders, React executes the component and gets the React elements describing the UI. Internally, React represents this work using Fiber nodes.
+
+When state or props change, React schedules an update and performs another render. During the render phase, React calculates the new UI and reconciles it with the previous one.
+
+React uses things such as element type and keys to determine which parts of the existing component tree can be reused and which parts need to change.
+
+Once React knows what needs to be updated, it enters the commit phase, where it applies the required changes to the DOM.
+
+So the simplified flow is:
+
+Component update → render → reconciliation → commit → DOM update.
+
+The important distinction is that a re-render doesn't necessarily mean a DOM update. React can render and determine that there is nothing that needs to change in the actual DOM."
+
+---
+
+# 🔥 Quick Revision
+
+```text
+Rendering
+→ React calculates the next UI.
+
+Reconciliation
+→ React compares previous and next UI.
+
+Fiber
+→ React's internal architecture for representing and scheduling rendering work.
+
+Fiber node
+→ A data structure representing a unit in the React tree.
+
+Render phase
+→ Calculate what should change.
+
+Commit phase
+→ Apply the required changes.
+
+Re-render
+→ Component rendering again.
+
+DOM update
+→ Actual changes applied to the DOM.
+
+Batching
+→ Group multiple state updates into fewer rendering operations.
+
+Key
+→ Helps React preserve identity among siblings.
+
+Changing key
+→ Can create a new component identity and reset state.
+
+Strict Mode
+→ Development feature for detecting unsafe patterns.
+
+Object.is
+→ Equality semantics used in several React comparisons.
+```
+
+---
+
+# ⚠️ Important Interview Traps
+
+### ❌ Don't say:
+
+> "Every time React re-renders, it updates the DOM."
+
+### ✅ Say:
+
+> "A re-render means React calculates the next UI. After reconciliation, React only commits the DOM changes that are necessary."
+
+---
+
+### ❌ Don't say:
+
+> "Virtual DOM is a complete copy of the real DOM."
+
+### ✅ Say:
+
+> "Virtual DOM is a conceptual representation of UI used to reason about changes. Modern React's implementation involves React elements, Fiber, reconciliation, and the commit phase."
+
+---
+
+### ❌ Don't say:
+
+> "React is fast because Virtual DOM is always faster than the DOM."
+
+### ✅ Say:
+
+> "React provides a declarative rendering model and efficiently determines and commits the necessary UI changes."
+
+---
+
+### ❌ Don't say:
+
+> "setState immediately changes the state variable."
+
+### ✅ Say:
+
+> "A state setter schedules an update. The new state is available when React renders the component again."
+
+---
+
+### ❌ Don't say:
+
+> "Keys are only needed to remove the warning."
+
+### ✅ Say:
+
+> "Keys provide stable identity among siblings and help React preserve the correct component state during reconciliation."
+
+---
+
+# 🎯 30-Second Interview Summary
+
+> "When a React component renders, React executes the component to calculate the next UI. React internally tracks this work using Fiber. When state or props change, React schedules an update and performs the render phase, where it calculates and reconciles the new UI with the previous one. React then enters the commit phase and applies only the necessary changes to the DOM. Keys help React preserve component identity, especially in lists. So an important distinction is that a re-render doesn't necessarily mean a DOM update; rendering is the calculation, while committing is when the actual UI changes are applied."
