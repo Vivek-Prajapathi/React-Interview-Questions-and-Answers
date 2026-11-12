@@ -9,7 +9,7 @@
 
 ### Answer
 
-An Axios interceptor is a mechanism that allows us to execute common logic during Axios's request and response processing lifecycle.
+"An interceptor is a function that runs automatically between Axios and the server. It allows us to perform common logic before a request is sent or before a response reaches our application."
 
 There are two main types of interceptors:
 
@@ -913,6 +913,11 @@ axios.interceptors.request.use((config) => {
     return config;
 });
 ```
+when we write :-
+```js
+axios.get("/users");
+```
+Axios internally creates a request configuration object.
 
 Conceptually, the configuration can contain information such as:
 
@@ -925,6 +930,35 @@ Conceptually, the configuration can contain information such as:
     timeout: 5000
 }
 ```
+
+So when we write:
+```js 
+config.headers.Authorization = `Bearer ${token}`;
+```
+
+we are basically saying:
+```js
+"Take this request's configuration and add an Authorization header."
+```
+Then:
+```js
+return config;```
+
+means:
+"Okay Axios, I've finished modifying the request. Now continue sending it."
+
+So:
+Request created
+      ↓
+Interceptor receives config
+      ↓
+We modify config
+      ↓
+return config
+      ↓
+Axios sends request
+      ↓
+Server
 
 The exact structure can vary, but the important concept is:
 
