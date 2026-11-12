@@ -1,14 +1,7 @@
-# PART 28 — AXIOS INTERCEPTORS INTERVIEW QUESTIONS & ANSWERS
-
-> **Interview Preparation Note**
->
-> The answers in this section intentionally follow the same concepts, terminology, examples, and mental models explained in the theory above.
->
-> The goal is not to memorize separate interview answers. If you understand the theory above, you should be able to answer these questions naturally.
 
 ---
 
-# 1. BASIC AXIOS INTERCEPTOR QUESTIONS
+# 1. BASIC AXIOS INTERCEPTOR INTERCEPTOR QUESTIONS
 
 ---
 
