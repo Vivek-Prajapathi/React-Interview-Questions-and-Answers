@@ -949,6 +949,7 @@ means:
 "Okay Axios, I've finished modifying the request. Now continue sending it."
 
 So:
+```text
 Request created
       ↓
 Interceptor receives config
@@ -960,6 +961,7 @@ return config
 Axios sends request
       ↓
 Server
+```
 
 The exact structure can vary, but the important concept is:
 
