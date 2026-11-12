@@ -942,7 +942,8 @@ we are basically saying:
 ```
 Then:
 ```js
-return config;```
+return config;
+```
 
 means:
 "Okay Axios, I've finished modifying the request. Now continue sending it."
